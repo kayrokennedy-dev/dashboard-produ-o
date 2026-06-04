@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Produção | Painel Administrativo</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <main class="dashboard-container">
+        <header class="dash-header">
+            <h1>Desempenho da Equipe Técnica</h1>
+            <p>Atualização automática em tempo real</p>
+        </header>
+
+        <section class="kpi-section">
+            <div class="card-kpi">
+                <h3>Total de Equipamentos</h3>
+                <span id="total-equipamentos" class="kpi-value">0</span>
+            </div>
+            <div class="card-kpi">
+                <h3>Líder do Turno</h3>
+                <span id="lider-nome" class="kpi-value highlight">-</span>
+            </div>
+        </section>
+
+        <section class="ranking-section">
+            <h2>Ranking Geral de Produção</h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Posição</th>
+                            <th>Técnico</th>
+                            <th>Produção</th>
+                            <th>Progresso Visual</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-ranking">
+                        <tr>
+                            <td colspan="4" class="loading">Carregando dados da planilha...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script src="main.js"></script>
+</body>
+</html>
