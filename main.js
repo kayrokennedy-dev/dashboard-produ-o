@@ -123,37 +123,28 @@ async function enviarDadosFormulario(event) {
     const equipamentoSelecionado = document.querySelector('input[name="equipamento"]:checked');
     const equipamento = equipamentoSelecionado ? equipamentoSelecionado.value : "";
 
-    const dadosParaEnviar = { tecnico, equipamento, mac, serial };
-
     btnEnviar.disabled = true;
     btnEnviar.textContent = "Salvando...";
     msgStatus.className = "status-message";
-    msgStatus.textContent = "Conectando ao banco de dados...";
+    msgStatus.textContent = "Enviando dados para a planilha...";
 
     try {
-        // Mudança crucial: Usando text/plain e omitindo headers complexos que acionam o preflight do CORS
-        const response = await fetch(API_URL, {
-            method: "POST",
-            body: JSON.stringify(dadosParaEnviar)
-        });
+        // MONTAGEM DA URL COM OS PARÂMETROS (Query Strings)
+        // O encodeURIComponent serve para proteger espaços e caracteres especiais como o ":" do MAC
+        const urlComParametros = `${API_URL}?tecnico=${encodeURIComponent(tecnico)}&equipamento=${encodeURIComponent(equipamento)}&mac=${encodeURIComponent(mac)}&serial=${encodeURIComponent(serial)}`;
 
-        // O Google Apps Script às vezes não retorna um JSON direto no POST devido aos redirecionamentos,
-        // então lemos o texto bruto primeiro para garantir que não quebre o código.
-        const textoResposta = await response.text();
-        
-        let resultado;
-        try {
-            resultado = JSON.parse(textoResposta);
-        } catch (e) {
-            // Se o Google retornou sucesso mas em formato de página/texto, consideramos sucesso se a linha foi inserida
-            resultado = { status: "sucesso", mensagem: "Baixa registrada com sucesso!" };
-        }
+        // Faz uma requisição GET simples, que NUNCA dá erro de CORS no Apps Script
+        const response = await fetch(urlComParametros);
+        if (!response.ok) throw new Error("Falha na comunicação com o Google Sheets.");
 
-        if (resultado.status === "sucesso" || resultado.status === 200) {
+        const resultado = await response.json();
+
+        // Se o Google devolveu o JSON com o histórico atualizado, significa que deu certo!
+        if (resultado && resultado.ranking) {
             msgStatus.className = "status-message sucesso";
-            msgStatus.textContent = `Sucesso: ${resultado.mensagem || "Registro salvo!"}`;
+            msgStatus.textContent = "Sucesso: Baixa registrada com sucesso!";
             
-            // Limpa os campos
+            // Limpa os campos do formulário
             document.getElementById("input-mac").value = "";
             document.getElementById("input-serial").value = "";
             if (equipamentoSelecionado) equipamentoSelecionado.checked = false;
@@ -161,16 +152,18 @@ async function enviarDadosFormulario(event) {
             document.getElementById("alerta-mac").textContent = "";
             document.getElementById("alerta-serial").textContent = "";
 
-            // Atualiza o histórico local e o ranking imediatamente
+            // Atualiza o histórico local e o ranking na hora com a resposta que já veio
+            historicoDeRegistros = resultado.historicoCompleto || [];
+            // Recarrega o visual da dashboard de forma síncrona
             await atualizarDashboard();
         } else {
-            throw new Error(resultado.mensagem || "Erro interno do script do Google.");
+            throw new Error("Resposta inválida do servidor.");
         }
 
     } catch (error) {
-        console.error("Erro detalhado no envio:", error);
+        console.error("Erro no envio:", error);
         msgStatus.className = "status-message erro";
-        msgStatus.textContent = "Erro ao registrar. Verifique os dados e tente novamente.";
+        msgStatus.textContent = "Erro ao registrar. Verifique sua conexão.";
     } finally {
         btnEnviar.disabled = false;
         btnEnviar.textContent = "Salvar Registro";
