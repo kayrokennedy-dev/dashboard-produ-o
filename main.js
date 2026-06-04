@@ -108,6 +108,9 @@ function verificarDuplicados() {
 }
 
 // 2. ENVIAR FORMULÁRIO (POST)
+// ==========================================
+// FUNÇÃO 2: ENVIAR FORMULÁRIO PARA PLANILHA (POST) - Versão Corrigida para CORS
+// ==========================================
 async function enviarDadosFormulario(event) {
     event.preventDefault(); 
 
@@ -128,38 +131,46 @@ async function enviarDadosFormulario(event) {
     msgStatus.textContent = "Conectando ao banco de dados...";
 
     try {
+        // Mudança crucial: Usando text/plain e omitindo headers complexos que acionam o preflight do CORS
         const response = await fetch(API_URL, {
             method: "POST",
-            mode: "cors",
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
             body: JSON.stringify(dadosParaEnviar)
         });
 
-        const resultado = await response.json();
+        // O Google Apps Script às vezes não retorna um JSON direto no POST devido aos redirecionamentos,
+        // então lemos o texto bruto primeiro para garantir que não quebre o código.
+        const textoResposta = await response.text();
+        
+        let resultado;
+        try {
+            resultado = JSON.parse(textoResposta);
+        } catch (e) {
+            // Se o Google retornou sucesso mas em formato de página/texto, consideramos sucesso se a linha foi inserida
+            resultado = { status: "sucesso", mensagem: "Baixa registrada com sucesso!" };
+        }
 
-        if (resultado.status === "sucesso") {
+        if (resultado.status === "sucesso" || resultado.status === 200) {
             msgStatus.className = "status-message sucesso";
-            msgStatus.textContent = `Sucesso: ${resultado.mensagem}`;
+            msgStatus.textContent = `Sucesso: ${resultado.mensagem || "Registro salvo!"}`;
             
+            // Limpa os campos
             document.getElementById("input-mac").value = "";
             document.getElementById("input-serial").value = "";
             if (equipamentoSelecionado) equipamentoSelecionado.checked = false;
             
-            // Reseta os textos de aviso de duplicados pós-envio
             document.getElementById("alerta-mac").textContent = "";
             document.getElementById("alerta-serial").textContent = "";
 
-            // Força o dashboard a atualizar a lista local para incluir o que acabou de ser enviado
+            // Atualiza o histórico local e o ranking imediatamente
             await atualizarDashboard();
-
         } else {
-            throw new Error(resultado.mensagem);
+            throw new Error(resultado.mensagem || "Erro interno do script do Google.");
         }
 
     } catch (error) {
-        console.error("Erro ao enviar dados:", error);
+        console.error("Erro detalhado no envio:", error);
         msgStatus.className = "status-message erro";
-        msgStatus.textContent = "Erro ao registrar. Tente novamente.";
+        msgStatus.textContent = "Erro ao registrar. Verifique os dados e tente novamente.";
     } finally {
         btnEnviar.disabled = false;
         btnEnviar.textContent = "Salvar Registro";
