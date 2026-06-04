@@ -1,37 +1,35 @@
-// 1. Cole aqui a URL gerada na última implantação do seu Google Apps Script
-const API_URL = "https://script.google.com/macros/s/AKfycbxxDvX_5po_IiWbCNmI12Lm8Mfja0xIhKnDc_cctZmT2GMH9_F2VKnG8MREkrOvlm7ouQ/exec"; 
+const API_URL = "https://script.google.com/macros/s/AKfycbxe9o5aztbeyCF2-3tHHsTpBD_blW8YXXXlnVa-TD2jF9Zld63-I9u_0jSD4O0qYQ52Qw/exec"; 
 
-// ==========================================
-// CONTROLE DE NAVEGAÇÃO (ABAS DO SITE)
-// ==========================================
+// Variável global para armazenar os MACs e Seriais que já estão na planilha
+let historicoDeRegistros = [];
+
 function alternarAba(nomeAba) {
-    // Remove a classe ativa de todas as abas e botões
     document.querySelectorAll('.aba-conteudo').forEach(aba => aba.classList.remove('active'));
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
 
-    // Ativa a aba e o botão selecionados
     if (nomeAba === 'dashboard') {
         document.getElementById('aba-dashboard').classList.add('active');
         document.getElementById('btn-aba-dash').classList.add('active');
-        atualizarDashboard(); // Recarrega os dados do ranking ao voltar para a aba
+        atualizarDashboard(); 
     } else if (nomeAba === 'formulario') {
         document.getElementById('aba-formulario').classList.add('active');
         document.getElementById('btn-aba-form').classList.add('active');
     }
 }
 
-// ==========================================
-// FUNÇÃO 1: BUSCAR DADOS E GERAR RANKING (GET)
-// ==========================================
+// 1. BUSCAR DADOS (GET) - Atualizado para ler o novo formato do Apps Script
 async function atualizarDashboard() {
     try {
         const response = await fetch(API_URL);
         if (!response.ok) throw new Error(`Erro: ${response.status}`);
         
-        const dados = await response.json();
+        const respostaObjeto = await response.json();
+        const dadosRanking = respostaObjeto.ranking || [];
+        
+        // Salva o histórico na variável global para ser usado no formulário
+        historicoDeRegistros = respostaObjeto.historicoCompleto || [];
 
-        // Se a planilha estiver zerada
-        if (!dados || dados.length === 0) {
+        if (dadosRanking.length === 0) {
             document.getElementById("total-equipamentos").textContent = "0";
             document.getElementById("lider-nome").textContent = "-";
             document.getElementById("tabela-ranking").innerHTML = `
@@ -40,29 +38,24 @@ async function atualizarDashboard() {
             return;
         }
 
-        // Como o Apps Script já envia os dados contados e somados, apenas tratamos maiúsculas/minúsculas
-        dados.forEach(item => {
+        dadosRanking.forEach(item => {
             item.NomeTratado = item.Tecnico || item.tecnico || "Sem Nome";
             item.QtdTratada = Number(item.Quantidade) || 0;
         });
 
-        // Ordena o ranking: maior produtor no topo
-        dados.sort((a, b) => b.QtdTratada - a.QtdTratada);
+        dadosRanking.sort((a, b) => b.QtdTratada - a.QtdTratada);
 
-        // Calcula KPIs básicos
-        const totalEquipamentos = dados.reduce((sum, item) => sum + item.QtdTratada, 0);
-        const liderTurno = dados[0].NomeTratado;
-        const maiorProducao = dados[0].QtdTratada || 1;
+        const totalEquipamentos = dadosRanking.reduce((sum, item) => sum + item.QtdTratada, 0);
+        const liderTurno = dadosRanking[0].NomeTratado;
+        const maiorProducao = dadosRanking[0].QtdTratada || 1;
 
-        // Injeta nos elementos do HTML
         document.getElementById("total-equipamentos").textContent = totalEquipamentos;
         document.getElementById("lider-nome").textContent = liderTurno;
 
-        // Renderiza as linhas do ranking
         const tabela = document.getElementById("tabela-ranking");
         tabela.innerHTML = ""; 
 
-        dados.forEach((item, index) => {
+        dadosRanking.forEach((item, index) => {
             const posicao = index + 1;
             const classePosicao = posicao <= 3 ? `pos-${posicao}` : "";
             const percentual = ((item.QtdTratada / maiorProducao) * 100).toFixed(0);
@@ -86,84 +79,94 @@ async function atualizarDashboard() {
     }
 }
 
-// ==========================================
-// FUNÇÃO 2: ENVIAR FORMULÁRIO PARA PLANILHA (POST)
-// ==========================================
+// ========================================================
+// NOVO: FUNÇÃO QUE DO VALIDA DUPLICADOS ENQUANTO DIGITA
+// ========================================================
+function verificarDuplicados() {
+    const macDigitado = document.getElementById("input-mac").value.trim().toUpperCase();
+    const serialDigitado = document.getElementById("input-serial").value.trim().toUpperCase();
+
+    const alertaMac = document.getElementById("alerta-mac");
+    const alertaSerial = document.getElementById("alerta-serial");
+
+    // Reseta os avisos antes de checar novamente
+    alertaMac.textContent = "";
+    alertaSerial.textContent = "";
+
+    // Se o histórico estiver vazio (primeiro dia de uso), não há o que checar
+    if (historicoDeRegistros.length === 0) return;
+
+    // Varre o histórico procurando match
+    historicoDeRegistros.forEach(registro => {
+        if (macDigitado && registro.mac === macDigitado) {
+            alertaMac.textContent = "⚠️ Este MAC já foi registrado antes!";
+        }
+        if (serialDigitado && registro.serial === serialDigitado) {
+            alertaSerial.textContent = "⚠️ Este SERIAL já foi registrado antes!";
+        }
+    });
+}
+
+// 2. ENVIAR FORMULÁRIO (POST)
 async function enviarDadosFormulario(event) {
-    event.preventDefault(); // Impede a página de dar recarga (F5) ao enviar
+    event.preventDefault(); 
 
     const btnEnviar = document.getElementById("btn-enviar");
     const msgStatus = document.getElementById("msg-status");
 
-    // Captura os elementos e valores do formulário
     const tecnico = document.getElementById("select-tecnico").value;
     const mac = document.getElementById("input-mac").value.trim();
     const serial = document.getElementById("input-serial").value.trim();
-    
-    // Captura o rádio button selecionado do Equipamento
     const equipamentoSelecionado = document.querySelector('input[name="equipamento"]:checked');
     const equipamento = equipamentoSelecionado ? equipamentoSelecionado.value : "";
 
-    // Objeto com os dados exatamente mapeados para o doPost da planilha
-    const dadosParaEnviar = {
-        tecnico: tecnico,
-        equipamento: equipamento,
-        mac: mac,
-        serial: serial
-    };
+    const dadosParaEnviar = { tecnico, equipamento, mac, serial };
 
-    // Bloqueia o botão para evitar cliques duplos durante o envio
     btnEnviar.disabled = true;
     btnEnviar.textContent = "Salvando...";
     msgStatus.className = "status-message";
     msgStatus.textContent = "Conectando ao banco de dados...";
 
     try {
-        // Envia os dados para a URL do Google Apps Script usando o método POST
         const response = await fetch(API_URL, {
             method: "POST",
-            mode: "cors", // Evita problemas de bloqueio de segurança entre domínios diferentes
-            headers: {
-                "Content-Type": "text/plain;charset=utf-8" // O Google Apps Script prefere receber texto puro e fazer o parse manual
-            },
+            mode: "cors",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
             body: JSON.stringify(dadosParaEnviar)
         });
 
         const resultado = await response.json();
 
         if (resultado.status === "sucesso") {
-            // Feedback visual positivo
             msgStatus.className = "status-message sucesso";
             msgStatus.textContent = `Sucesso: ${resultado.mensagem}`;
             
-            // Limpa os campos de MAC, Serial e Checkbox para a próxima baixa
             document.getElementById("input-mac").value = "";
             document.getElementById("input-serial").value = "";
             if (equipamentoSelecionado) equipamentoSelecionado.checked = false;
+            
+            // Reseta os textos de aviso de duplicados pós-envio
+            document.getElementById("alerta-mac").textContent = "";
+            document.getElementById("alerta-serial").textContent = "";
+
+            // Força o dashboard a atualizar a lista local para incluir o que acabou de ser enviado
+            await atualizarDashboard();
 
         } else {
             throw new Error(resultado.mensagem);
         }
 
     } catch (error) {
-        // Feedback visual de erro
         console.error("Erro ao enviar dados:", error);
         msgStatus.className = "status-message erro";
         msgStatus.textContent = "Erro ao registrar. Tente novamente.";
     } finally {
-        // Reativa o botão do formulário
         btnEnviar.disabled = false;
         btnEnviar.textContent = "Salvar Registro";
     }
 }
 
-// ==========================================
-// INICIALIZAÇÃO AUTOMÁTICA
-// ==========================================
 document.addEventListener("DOMContentLoaded", () => {
-    // Inicializa a primeira tela buscando o ranking
     atualizarDashboard();
-    
-    // Mantém o ranking se atualizando sozinho de fundo a cada 2 minutos
     setInterval(atualizarDashboard, 120000);
 });

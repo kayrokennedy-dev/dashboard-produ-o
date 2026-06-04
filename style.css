@@ -21,7 +21,6 @@ body {
   min-height: 100vh;
   padding: 2rem 1rem;
 }
-
 .dashboard-container {
   max-width: 1200px;
   margin: 0 auto;
@@ -295,3 +294,11 @@ select:focus, input[type="text"]:focus {
 
 .status-message.sucesso { color: var(--accent-success); }
 .status-message.erro { color: #ef4444; }
+
+.alerta-input {
+    color: #f59e0b; /* Cor laranja de atenção */
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-top: 0.25rem;
+    display: block;
+}
