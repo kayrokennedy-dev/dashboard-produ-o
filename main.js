@@ -1,5 +1,5 @@
 // 1. Cole aqui a URL gerada na última implantação do seu Google Apps Script
-const API_URL = "SUA_URL_DO_APPS_SCRIPT_AQUI"; 
+const API_URL = "https://script.google.com/macros/s/AKfycbxxDvX_5po_IiWbCNmI12Lm8Mfja0xIhKnDc_cctZmT2GMH9_F2VKnG8MREkrOvlm7ouQ/exec"; 
 
 // ==========================================
 // CONTROLE DE NAVEGAÇÃO (ABAS DO SITE)
