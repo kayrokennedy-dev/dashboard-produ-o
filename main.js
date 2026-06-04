@@ -1,4 +1,4 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbxe9o5aztbeyCF2-3tHHsTpBD_blW8YXXXlnVa-TD2jF9Zld63-I9u_0jSD4O0qYQ52Qw/exec"; 
+const API_URL = "https://script.google.com/macros/s/AKfycbwK6GjQ42zWf1usMngBWtRIcA1350574KnpRKC8CJ2NKe9HgBgqkcyaGS3OyylYSwRryw/exec"; 
 
 // Variável global para armazenar os MACs e Seriais que já estão na planilha
 let historicoDeRegistros = [];
