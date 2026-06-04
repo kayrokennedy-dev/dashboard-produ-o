@@ -3,50 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard de Produção | Painel Administrativo</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Dashboard & Sistema de Baixas | Controle de Produção</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
     <main class="dashboard-container">
         <header class="dash-header">
-            <h1>Desempenho da Equipe Técnica</h1>
-            <p>Atualização automática em tempo real</p>
+            <h1>Sistema Integrado de Produção</h1>
+            <p>Gerenciamento de técnicos e registro de equipamentos</p>
+            
+            <nav class="dash-nav">
+                <button id="btn-aba-dash" class="nav-btn active" onclick="alternarAba('dashboard')">Painel de Controle</button>
+                <button id="btn-aba-form" class="nav-btn" onclick="alternarAba('formulario')">Registrar Baixa</button>
+            </nav>
         </header>
 
-        <section class="kpi-section">
-            <div class="card-kpi">
-                <h3>Total de Equipamentos</h3>
-                <span id="total-equipamentos" class="kpi-value">0</span>
-            </div>
-            <div class="card-kpi">
-                <h3>Líder do Turno</h3>
-                <span id="lider-nome" class="kpi-value highlight">-</span>
-            </div>
-        </section>
+        <div id="aba-dashboard" class="aba-conteudo active">
+            <section class="kpi-section">
+                <div class="card-kpi">
+                    <h3>Total de Equipamentos</h3>
+                    <span id="total-equipamentos" class="kpi-value">0</span>
+                </div>
+                <div class="card-kpi">
+                    <h3>Líder do Turno</h3>
+                    <span id="lider-nome" class="kpi-value highlight">-</span>
+                </div>
+            </section>
 
-        <section class="ranking-section">
-            <h2>Ranking Geral de Produção</h2>
-            <div class="table-wrapper">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Posição</th>
-                            <th>Técnico</th>
-                            <th>Produção</th>
-                            <th>Progresso Visual</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabela-ranking">
-                        <tr>
-                            <td colspan="4" class="loading">Carregando dados da planilha...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
+            <section class="ranking-section">
+                <h2>Ranking Geral de Produção</h2>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Posição</th>
+                                <th>Técnico</th>
+                                <th>Qtd Concluída</th>
+                                <th>Progresso Visual</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-ranking">
+                            <tr>
+                                <td colspan="4" class="loading">Carregando dados da planilha...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <div id="aba-formulario" class="aba-conteudo">
+            <section class="form-section">
+                <h2>Registrar Novo Equipamento</h2>
+                <p class="form-subtitle">Preencha os dados abaixo para dar baixa no sistema</p>
+
+                <form id="form-baixa" onsubmit="enviarDadosFormulario(event)">
+                    
+                    <div class="form-group">
+                        <label for="select-tecnico">Identificação do Técnico:</label>
+                        <select id="select-tecnico" required>
+                            <option value="" disabled selected>Selecione seu nome...</option>
+                            <option value="Amanda Costa">Amanda Costa</option>
+                            <option value="Carlos Silva">Carlos Silva</option>
+                            <option value="Bruno Souza">Bruno Souza</option>
+                            <option value="Julia Lima">Julia Lima</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Selecione o Equipamento Concluído:</label>
+                        <div class="checkbox-grid">
+                            <label class="checkbox-card">
+                                <input type="radio" name="equipamento" value="Notebook Dell" required>
+                                <span>Notebook Dell</span>
+                            </label>
+                            <label class="checkbox-card">
+                                <input type="radio" name="equipamento" value="Switch Cisco 24p">
+                                <span>Switch Cisco 24p</span>
+                            </label>
+                            <label class="checkbox-card">
+                                <input type="radio" name="equipamento" value="Roteador Mikrotik">
+                                <span>Roteador Mikrotik</span>
+                            </label>
+                            <label class="checkbox-card">
+                                <input type="radio" name="equipamento" value="Impressora HP">
+                                <span>Impressora HP</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="input-mac">Endereço MAC:</label>
+                            <input type="text" id="input-mac" placeholder="Ex: 00:1A:3F:F1:4C:C6" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="input-serial">SERIAL NUMBER:</label>
+                            <input type="text" id="input-serial" placeholder="Ex: SN123456789" required>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" id="btn-enviar" class="submit-btn">Salvar Registro</button>
+                        <span id="msg-status" class="status-message"></span>
+                    </div>
+
+                </form>
+            </section>
+        </div>
     </main>
 
-    <script src="main.js"></script>
+    <script src="js/main.js"></script>
 </body>
 </html>
