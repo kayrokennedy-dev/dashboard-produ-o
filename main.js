@@ -1,4 +1,4 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbwpOY41j6WPFJZeoJmdEHy_j7Pnbo3RL432KBzbbyzl0zbnpL8fTkkmWWNVQkVjkhXngg/exec"; 
+const API_URL = "https://script.google.com/macros/s/AKfycby0FZBLLBYN_8q0MceyVmiW1fBo9NoSCHSFBDKfESHsa4hoj5zeIehkCDXM0f18OycEHA/exec"; 
 
 // Variável global para armazenar os MACs e Seriais que já estão na planilha
 let historicoDeRegistros = [];
@@ -120,8 +120,21 @@ async function enviarDadosFormulario(event) {
     const tecnico = document.getElementById("select-tecnico").value;
     const mac = document.getElementById("input-mac").value.trim();
     const serial = document.getElementById("input-serial").value.trim();
+    
+    // Captura o equipamento (Radio - Apenas 1)
     const equipamentoSelecionado = document.querySelector('input[name="equipamento"]:checked');
     const equipamento = equipamentoSelecionado ? equipamentoSelecionado.value : "";
+
+    // CAPTURA OS DEFEITOS (Checkboxes - Podem ser vários)
+    const checkboxesDefeitos = document.querySelectorAll('input[name="defeito"]:checked');
+    let defeitosSelecionados = [];
+    checkboxesDefeitos.forEach(cb => {
+        defeitosSelecionados.push(cb.value);
+    });
+    
+    // Junta todos os defeitos em um texto só: "Tela/Display, Sistema/Software"
+    // Se nenhum for marcado, envia "Não especificado"
+    const defeitosTexto = defeitosSelecionados.length > 0 ? defeitosSelecionados.join(", ") : "Não especificado";
 
     btnEnviar.disabled = true;
     btnEnviar.textContent = "Salvando...";
@@ -129,32 +142,32 @@ async function enviarDadosFormulario(event) {
     msgStatus.textContent = "Enviando dados para a planilha...";
 
     try {
-        // MONTAGEM DA URL COM OS PARÂMETROS (Query Strings)
-        // O encodeURIComponent serve para proteger espaços e caracteres especiais como o ":" do MAC
-        const urlComParametros = `${API_URL}?tecnico=${encodeURIComponent(tecnico)}&equipamento=${encodeURIComponent(equipamento)}&mac=${encodeURIComponent(mac)}&serial=${encodeURIComponent(serial)}`;
+        // INCLUÍDO O PARÂMETRO &defeitos NA URL
+        const urlComParametros = `${API_URL}?tecnico=${encodeURIComponent(tecnico)}&equipamento=${encodeURIComponent(equipamento)}&mac=${encodeURIComponent(mac)}&serial=${encodeURIComponent(serial)}&defeitos=${encodeURIComponent(defeitosTexto)}`;
 
-        // Faz uma requisição GET simples, que NUNCA dá erro de CORS no Apps Script
         const response = await fetch(urlComParametros);
         if (!response.ok) throw new Error("Falha na comunicação com o Google Sheets.");
 
         const resultado = await response.json();
 
-        // Se o Google devolveu o JSON com o histórico atualizado, significa que deu certo!
         if (resultado && resultado.ranking) {
             msgStatus.className = "status-message sucesso";
             msgStatus.textContent = "Sucesso: Baixa registrada com sucesso!";
             
-            // Limpa os campos do formulário
+            // Limpa os campos de texto
             document.getElementById("input-mac").value = "";
             document.getElementById("input-serial").value = "";
+            
+            // Desmarca o rádio do equipamento
             if (equipamentoSelecionado) equipamentoSelecionado.checked = false;
+            
+            // DESMARCA TODAS AS CHECKBOXES DE DEFEITOS
+            checkboxesDefeitos.forEach(cb => cb.checked = false);
             
             document.getElementById("alerta-mac").textContent = "";
             document.getElementById("alerta-serial").textContent = "";
 
-            // Atualiza o histórico local e o ranking na hora com a resposta que já veio
             historicoDeRegistros = resultado.historicoCompleto || [];
-            // Recarrega o visual da dashboard de forma síncrona
             await atualizarDashboard();
         } else {
             throw new Error("Resposta inválida do servidor.");

@@ -302,3 +302,19 @@ select:focus, input[type="text"]:focus {
     margin-top: 0.25rem;
     display: block;
 }
+.checkbox-card-defeito {
+    background-color: var(--bg-main);
+    border: 1px solid var(--border);
+    padding: 1rem;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.checkbox-card-defeito:has(input:checked) {
+    border-color: var(--accent-success);
+    background-color: rgba(16, 185, 129, 0.05);
+}
