@@ -1,5 +1,5 @@
 let meuGraficoPizza = null; // Guarda o gráfico para podermos destruí-lo e recriá-lo ao atualizar
-const API_URL = "https://script.google.com/macros/s/AKfycbw-qaK5-ysKd09NTU-a9rBACdjGelFWl98jxMTf_qAQMiiOuVVqwxbUi04v12FYEMn7jQ/exec"; 
+const API_URL = "https://script.google.com/macros/s/AKfycbzWT2Rf0LBGA_-2m6aXYTWrUmCMcXk7FHWpHcNWrIMU9dQ4E_Fb0u5WTfPIJXCkmxCfHQ/exec"; 
 
 let historicoDeRegistros = [];
 
