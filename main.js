@@ -18,6 +18,7 @@ function alternarAba(nomeAba) {
 }
 
 // 1. CARREGAR DASHBOARD COM MÉTRICAS AVANÇADAS E GRÁFICO DE PIZZA (GET)
+// 1. CARREGAR DASHBOARD COM MÉTRICAS AVANÇADAS E GRÁFICO DE PIZZA (GET)
 async function atualizarDashboard() {
     try {
         const response = await fetch(API_URL);
@@ -38,8 +39,12 @@ async function atualizarDashboard() {
             return;
         }
 
-        // Configuração dos tempos
+        // ==========================================
+        // CONFIGURAÇÃO DOS MARCOS TEMPORAIS (DATAS)
+        // ==========================================
         const agora = new Date();
+        
+        // Criar o início do dia local de forma segura
         const hojeInicio = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate()).getTime();
         
         const limite15Dias = new Date();
@@ -67,7 +72,18 @@ async function atualizarDashboard() {
             const nome = registro.tecnico || registro.Tecnico || "Sem Nome";
             if (!registro.data) return;
 
-            const dataReg = new Date(registro.data).getTime();
+            // TRATAMENTO DA DATA: Força a criação do objeto Date tratando possíveis fuso-horários
+            let dataObjeto = new Date(registro.data);
+            
+            // Se a conversão falhar por formato string do Sheets, tenta limpar a string
+            if (isNaN(dataObjeto.getTime())) {
+                // Substitui espaços por 'T' caso venha no formato YYYY-MM-DD HH:MM:SS
+                const dataFormatada = String(registro.data).replace(" ", "T");
+                dataObjeto = new Date(dataFormatada);
+            }
+
+            const dataReg = dataObjeto.getTime();
+            if (isNaN(dataReg)) return; // Ignora se ainda assim for inválido
 
             if (!estatisticasTecnicos[nome]) {
                 estatisticasTecnicos[nome] = { nome: nome, totalGeral: 0, hoje: 0, ultimos15: 0, ultimos30: 0 };
@@ -81,7 +97,6 @@ async function atualizarDashboard() {
                 estatisticasTecnicos[nome].hoje++;
 
                 // Métrica específica de Equipamentos de HOJE
-                // Força o texto para maiúsculo para evitar erros de digitação (Ex: ont, Ont, ONT)
                 const equipStr = String(registro.equipamento || "").toUpperCase();
                 
                 if (equipStr.includes("ONT")) {
@@ -116,42 +131,49 @@ async function atualizarDashboard() {
         // ==========================================
         // RENDERIZAÇÃO / ATUALIZAÇÃO DO GRÁFICO DE PIZZA
         // ==========================================
-        const ctx = document.getElementById('graficoPizzaEquipamentos').getContext('2d');
+        const canvasElement = document.getElementById('graficoPizzaEquipamentos');
         
-        // Se o gráfico já existia de uma atualização anterior, destrói para não duplicar na tela
-        if (meuGraficoPizza !== null) {
-            meuGraficoPizza.destroy();
-        }
+        if (canvasElement) {
+            const ctx = canvasElement.getContext('2d');
+            
+            if (meuGraficoPizza !== null) {
+                meuGraficoPizza.destroy();
+            }
 
-        // Cria a nova instância do gráfico com os dados contados de hoje
-        meuGraficoPizza = new Chart(ctx, {
-            type: 'pie',
-            data: {
-                labels: ['ONTs', 'ONUs', 'Roteadores'],
-                datasets: [{
-                    data: [qtdOntHoje, qtdOnuHoje, qtdRoteadorHoje],
-                    backgroundColor: [
-                        '#3b82f6', // Azul para ONT
-                        '#10b981', // Verde para ONU
-                        '#f59e0b'  // Laranja para Roteador
-                    ],
-                    borderWidth: 1,
-                    borderColor: 'var(--border)'
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            color: '#9ca3af', // Cor cinza suave para os nomes da legenda combinando com o tema escuro
-                            font: { family: 'sans-serif', size: 12 }
+            // Evita criar um gráfico totalmente zerado que quebra a renderização do Chart.js
+            const temDadosHoje = (qtdOntHoje + qtdOnuHoje + qtdRoteadorHoje) > 0;
+
+            meuGraficoPizza = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['ONTs', 'ONUs', 'Roteadores'],
+                    datasets: [{
+                        // Se não houver dados hoje, joga um valor padrão cinza para o gráfico não sumir
+                        data: temDadosHoje ? [qtdOntHoje, qtdOnuHoje, qtdRoteadorHoje] : [1, 1, 1],
+                        backgroundColor: temDadosHoje ? [
+                            '#3b82f6', // Azul para ONT
+                            '#10b981', // Verde para ONU
+                            '#f59e0b'  // Laranja para Roteador
+                        ] : ['#374151', '#374151', '#374151'], // Cinza escuro se estiver zerado
+                        borderWidth: 1,
+                        borderColor: 'rgba(255,255,255,0.1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, // Garante que o canvas respeite o tamanho do wrapper CSS
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#9ca3af',
+                                font: { family: 'sans-serif', size: 12 }
+                            }
                         }
                     }
                 }
-            }
-        });
+            });
+        }
 
         // ==========================================
         // RENDERIZAÇÃO DA TABELA DO RANKING
