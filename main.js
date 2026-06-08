@@ -4,21 +4,31 @@ const API_URL = "https://script.google.com/macros/s/AKfycbzWT2Rf0LBGA_-2m6aXYTWr
 let historicoDeRegistros = [];
 
 function alternarAba(nomeAba) {
-    document.querySelectorAll('.aba-conteudo').forEach(aba => aba.classList.remove('active'));
-    document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+    // 1. Esconde todas as abas de conteúdo
+    document.querySelectorAll('.aba-conteudo').forEach(aba => {
+        aba.classList.remove('active');
+    });
 
+    // 2. Remove o destaque visual de todos os botões do topo
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    // 3. Mostra a aba clicada e acende o botão correspondente
     if (nomeAba === 'dashboard') {
         document.getElementById('aba-dashboard').classList.add('active');
         document.getElementById('btn-aba-dash').classList.add('active');
-        atualizarDashboard(); 
+        atualizarDashboard(); // Força o gráfico e os cards a atualizarem
+    } else if (nomeAba === 'ranking') {
+        document.getElementById('aba-ranking').classList.add('active');
+        document.getElementById('btn-aba-ranking').classList.add('active');
+        atualizarDashboard(); // Garante que a tabela de ranking puxe os dados mais novos
     } else if (nomeAba === 'formulario') {
         document.getElementById('aba-formulario').classList.add('active');
         document.getElementById('btn-aba-form').classList.add('active');
     }
 }
 
-// 1. CARREGAR DASHBOARD COM MÉTRICAS AVANÇADAS E GRÁFICO DE PIZZA (GET)
-// 1. CARREGAR DASHBOARD COM MÉTRICAS AVANÇADAS E GRÁFICO DE PIZZA (GET)
 // 1. CARREGAR DASHBOARD COM MÉTRICAS AVANÇADAS E GRÁFICO DE PIZZA (GET)
 async function atualizarDashboard() {
     try {

@@ -15,12 +15,12 @@
             
             <nav class="dash-nav">
                 <button id="btn-aba-dash" class="nav-btn active" onclick="alternarAba('dashboard')">Painel de Controle</button>
+                <button id="btn-aba-ranking" class="nav-btn" onclick="alternarAba('ranking')">Ranking de Técnicos</button>
                 <button id="btn-aba-form" class="nav-btn" onclick="alternarAba('formulario')">Registrar Baixa</button>
             </nav>
         </header>
 
         <div id="aba-dashboard" class="aba-conteudo active">
-    
             <h2 class="section-title">Métricas Gerais da Bancada</h2>
             <section class="metrics-grid">
                 <div class="card-metric">
@@ -44,6 +44,7 @@
                     <p>Histórico geral</p>
                 </div>
             </section>
+
             <section class="grafico-section" style="margin-bottom: 2.5rem;">
                 <h2 class="section-title">Distribuição da Produção de Hoje</h2>
                 <div class="grafico-container-flex">
@@ -67,10 +68,10 @@
                     </div>
                 </div>
             </section>
-
-
+        </div>
+        <div id="aba-ranking" class="aba-conteudo">
             <section class="ranking-section">
-                <h2>Ranking e Médias de Desempenho</h2>
+                <h2 class="section-title">🏆 Ranking e Médias de Desempenho</h2>
                 <div class="table-wrapper">
                     <table>
                         <thead>

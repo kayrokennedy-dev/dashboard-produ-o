@@ -448,3 +448,12 @@ select:focus, input[type="text"]:focus {
     max-height: 280px;
     width: 100%;
 }
+/* Regra para esconder as abas que não estão selecionadas */
+.aba-conteudo {
+    display: none;
+}
+
+/* Regra para mostrar apenas a aba que tiver a classe active */
+.aba-conteudo.active {
+    display: block;
+}
