@@ -1,3 +1,4 @@
+let meuGraficoPizza = null; // Guarda o gráfico para podermos destruí-lo e recriá-lo ao atualizar
 const API_URL = "https://script.google.com/macros/s/AKfycbw-qaK5-ysKd09NTU-a9rBACdjGelFWl98jxMTf_qAQMiiOuVVqwxbUi04v12FYEMn7jQ/exec"; 
 
 let historicoDeRegistros = [];
@@ -16,7 +17,7 @@ function alternarAba(nomeAba) {
     }
 }
 
-// 1. CARREGAR DASHBOARD COM MÉTRICAS AVANÇADAS (GET)
+// 1. CARREGAR DASHBOARD COM MÉTRICAS AVANÇADAS E GRÁFICO DE PIZZA (GET)
 async function atualizarDashboard() {
     try {
         const response = await fetch(API_URL);
@@ -24,11 +25,8 @@ async function atualizarDashboard() {
         
         const respostaObjeto = await response.json();
         const historicoCompleto = respostaObjeto.historicoCompleto || [];
-        
-        // Salva na variável global para o sistema de lote continuar checando duplicados
         historicoDeRegistros = historicoCompleto;
 
-        // Se a planilha estiver zerada, limpa os novos cards e avisa na tabela
         if (historicoCompleto.length === 0) {
             document.getElementById("prod-diaria").textContent = "0";
             document.getElementById("prod-quinzenal").textContent = "0";
@@ -40,59 +38,59 @@ async function atualizarDashboard() {
             return;
         }
 
-        // ==========================================
-        // CONFIGURAÇÃO DOS MARCOS TEMPORAIS (DATAS)
-        // ==========================================
+        // Configuração dos tempos
         const agora = new Date();
-        
-        // Início do dia atual (meia-noite de hoje)
         const hojeInicio = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate()).getTime();
         
-        // Limite de 15 dias atrás
         const limite15Dias = new Date();
         limite15Dias.setDate(agora.getDate() - 15);
         const tempo15 = limite15Dias.getTime();
         
-        // Limite de 30 dias atrás
         const limite30Dias = new Date();
         limite30Dias.setDate(agora.getDate() - 30);
         const tempo30 = limite30Dias.getTime();
 
-        // Contadores para os Cards Gerais do Supervisor
+        // Totais Gerais
         let totalHoje = 0;
         let total15 = 0;
         let total30 = 0;
 
-        // Objeto para organizar o desempenho de cada técnico de forma isolada
+        // Contadores específicos de equipamentos para HOJE
+        let qtdOntHoje = 0;
+        let qtdOnuHoje = 0;
+        let qtdRoteadorHoje = 0;
+
+        // Objeto organizador por Técnico
         const estatisticasTecnicos = {};
 
-        // Varre o histórico bruto calculando os períodos
         historicoCompleto.forEach(registro => {
-            // Mapeia o nome do técnico (ajuste caso sua planilha use a propriedade minúscula ou maiúscula)
             const nome = registro.tecnico || registro.Tecnico || "Sem Nome";
             if (!registro.data) return;
 
-            // Transforma a data de texto vinda do Google Sheets em milissegundos para comparar
             const dataReg = new Date(registro.data).getTime();
 
-            // Se o técnico não existir no nosso mapa de estatísticas, cria ele zerado
             if (!estatisticasTecnicos[nome]) {
-                estatisticasTecnicos[nome] = {
-                    nome: nome,
-                    totalGeral: 0,
-                    hoje: 0,
-                    ultimos15: 0,
-                    ultimos30: 0
-                };
+                estatisticasTecnicos[nome] = { nome: nome, totalGeral: 0, hoje: 0, ultimos15: 0, ultimos30: 0 };
             }
 
-            // Incrementa o histórico geral dele
             estatisticasTecnicos[nome].totalGeral += 1;
 
-            // Filtra e soma com base no tempo de registro de cada equipamento
+            // Filtros de tempo gerais
             if (dataReg >= hojeInicio) {
                 totalHoje++;
                 estatisticasTecnicos[nome].hoje++;
+
+                // Métrica específica de Equipamentos de HOJE
+                // Força o texto para maiúsculo para evitar erros de digitação (Ex: ont, Ont, ONT)
+                const equipStr = String(registro.equipamento || "").toUpperCase();
+                
+                if (equipStr.includes("ONT")) {
+                    qtdOntHoje++;
+                } else if (equipStr.includes("ONU")) {
+                    qtdOnuHoje++;
+                } else if (equipStr.includes("ROTEADOR") || equipStr.includes("ROTEADORES")) {
+                    qtdRoteadorHoje++;
+                }
             }
             if (dataReg >= tempo15) {
                 total15++;
@@ -104,27 +102,70 @@ async function atualizarDashboard() {
             }
         });
 
-        // Atualiza os Cards de Produção Geral no topo do HTML
+        // Atualiza os Cards de Produção Geral no topo
         document.getElementById("prod-diaria").textContent = totalHoje;
         document.getElementById("prod-quinzenal").textContent = total15;
         document.getElementById("prod-mensal").textContent = total30;
         document.getElementById("total-equipamentos").textContent = historicoCompleto.length;
 
-        // Transforma o mapa de técnicos em uma lista para podermos ordenar
-        const listaOrdenada = Object.values(estatisticasTecnicos);
+        // Atualiza os mini-cards de equipamentos de hoje
+        document.getElementById("qtd-ont-hoje").textContent = qtdOntHoje;
+        document.getElementById("qtd-onu-hoje").textContent = qtdOnuHoje;
+        document.getElementById("qtd-roteador-hoje").textContent = qtdRoteadorHoje;
+
+        // ==========================================
+        // RENDERIZAÇÃO / ATUALIZAÇÃO DO GRÁFICO DE PIZZA
+        // ==========================================
+        const ctx = document.getElementById('graficoPizzaEquipamentos').getContext('2d');
         
-        // Critério de Ranking: Quem produziu mais no total geral fica no topo
+        // Se o gráfico já existia de uma atualização anterior, destrói para não duplicar na tela
+        if (meuGraficoPizza !== null) {
+            meuGraficoPizza.destroy();
+        }
+
+        // Cria a nova instância do gráfico com os dados contados de hoje
+        meuGraficoPizza = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['ONTs', 'ONUs', 'Roteadores'],
+                datasets: [{
+                    data: [qtdOntHoje, qtdOnuHoje, qtdRoteadorHoje],
+                    backgroundColor: [
+                        '#3b82f6', // Azul para ONT
+                        '#10b981', // Verde para ONU
+                        '#f59e0b'  // Laranja para Roteador
+                    ],
+                    borderWidth: 1,
+                    borderColor: 'var(--border)'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#9ca3af', // Cor cinza suave para os nomes da legenda combinando com o tema escuro
+                            font: { family: 'sans-serif', size: 12 }
+                        }
+                    }
+                }
+            }
+        });
+
+        // ==========================================
+        // RENDERIZAÇÃO DA TABELA DO RANKING
+        // ==========================================
+        const listaOrdenada = Object.values(estatisticasTecnicos);
         listaOrdenada.sort((a, b) => b.totalGeral - a.totalGeral);
 
-        // Renderiza a tabela atualizada com as novas colunas de médias
         const tabela = document.getElementById("tabela-ranking");
-        tabela.innerHTML = ""; 
+        tabela.innerHTML = "";
 
         listaOrdenada.forEach((tecnico, index) => {
             const posicao = index + 1;
             const classePosicao = posicao <= 3 ? `pos-${posicao}` : "";
 
-            // Cálculos das Médias Diárias do Período (fixando 1 casa decimal ex: 4.5 un)
             const mediaDiaria = tecnico.hoje.toFixed(1);
             const mediaQuinzenal = (tecnico.ultimos15 / 15).toFixed(1);
             const mediaMensal = (tecnico.ultimos30 / 30).toFixed(1);

@@ -44,6 +44,30 @@
                     <p>Histórico geral</p>
                 </div>
             </section>
+            <section class="grafico-section" style="margin-bottom: 2.5rem;">
+                <h2 class="section-title">Distribuição da Produção de Hoje</h2>
+                <div class="grafico-container-flex">
+                    <div class="cards-equipamentos-hoje">
+                        <div class="card-mini-equip">
+                            <span>ONTs</span>
+                            <strong id="qtd-ont-hoje">0</strong>
+                        </div>
+                        <div class="card-mini-equip">
+                            <span>ONUs</span>
+                            <strong id="qtd-onu-hoje">0</strong>
+                        </div>
+                        <div class="card-mini-equip">
+                            <span>Roteadores</span>
+                            <strong id="qtd-roteador-hoje">0</strong>
+                        </div>
+                    </div>
+                    
+                    <div class="canvas-wrapper">
+                        <canvas id="graficoPizzaEquipamentos"></canvas>
+                    </div>
+                </div>
+            </section>
+
 
             <section class="ranking-section">
                 <h2>Ranking e Médias de Desempenho</h2>
@@ -511,6 +535,7 @@
             </section>
         </div>
     </main>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script src="main.js"></script>
 </body>
