@@ -44,8 +44,8 @@ async function atualizarDashboard() {
         // ==========================================
         const agora = new Date();
         
-        // Criar o início do dia local de forma segura
-        const hojeInicio = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate()).getTime();
+        // String de comparação local (Ex: "08/06/2026") para ignorar fuso de horas
+        const hojeStringLocal = agora.toLocaleDateString('pt-BR');
         
         const limite15Dias = new Date();
         limite15Dias.setDate(agora.getDate() - 15);
@@ -72,18 +72,18 @@ async function atualizarDashboard() {
             const nome = registro.tecnico || registro.Tecnico || "Sem Nome";
             if (!registro.data) return;
 
-            // TRATAMENTO DA DATA: Força a criação do objeto Date tratando possíveis fuso-horários
             let dataObjeto = new Date(registro.data);
             
-            // Se a conversão falhar por formato string do Sheets, tenta limpar a string
             if (isNaN(dataObjeto.getTime())) {
-                // Substitui espaços por 'T' caso venha no formato YYYY-MM-DD HH:MM:SS
                 const dataFormatada = String(registro.data).replace(" ", "T");
                 dataObjeto = new Date(dataFormatada);
             }
 
             const dataReg = dataObjeto.getTime();
-            if (isNaN(dataReg)) return; // Ignora se ainda assim for inválido
+            if (isNaN(dataReg)) return;
+
+            // Extrai a string da data do registro no formato brasileiro para comparar
+            const dataRegistroStringLocal = dataObjeto.toLocaleDateString('pt-BR');
 
             if (!estatisticasTecnicos[nome]) {
                 estatisticasTecnicos[nome] = { nome: nome, totalGeral: 0, hoje: 0, ultimos15: 0, ultimos30: 0 };
@@ -91,8 +91,8 @@ async function atualizarDashboard() {
 
             estatisticasTecnicos[nome].totalGeral += 1;
 
-            // Filtros de tempo gerais
-            if (dataReg >= hojeInicio) {
+            // COMPARAÇÃO BLINDADA: Compara dia com dia, independente da hora ou fuso
+            if (dataRegistroStringLocal === hojeStringLocal) {
                 totalHoje++;
                 estatisticasTecnicos[nome].hoje++;
 
@@ -107,6 +107,8 @@ async function atualizarDashboard() {
                     qtdRoteadorHoje++;
                 }
             }
+            
+            // Para quinzena e mês mantemos o milissegundo pois a margem é de dias inteiros
             if (dataReg >= tempo15) {
                 total15++;
                 estatisticasTecnicos[nome].ultimos15++;
@@ -117,7 +119,7 @@ async function atualizarDashboard() {
             }
         });
 
-        // Atualiza os Cards de Produção Geral no topo
+        // Atualiza os Cards de Production Geral no topo
         document.getElementById("prod-diaria").textContent = totalHoje;
         document.getElementById("prod-quinzenal").textContent = total15;
         document.getElementById("prod-mensal").textContent = total30;
@@ -140,7 +142,6 @@ async function atualizarDashboard() {
                 meuGraficoPizza.destroy();
             }
 
-            // Evita criar um gráfico totalmente zerado que quebra a renderização do Chart.js
             const temDadosHoje = (qtdOntHoje + qtdOnuHoje + qtdRoteadorHoje) > 0;
 
             meuGraficoPizza = new Chart(ctx, {
@@ -148,20 +149,19 @@ async function atualizarDashboard() {
                 data: {
                     labels: ['ONTs', 'ONUs', 'Roteadores'],
                     datasets: [{
-                        // Se não houver dados hoje, joga um valor padrão cinza para o gráfico não sumir
                         data: temDadosHoje ? [qtdOntHoje, qtdOnuHoje, qtdRoteadorHoje] : [1, 1, 1],
                         backgroundColor: temDadosHoje ? [
                             '#3b82f6', // Azul para ONT
                             '#10b981', // Verde para ONU
                             '#f59e0b'  // Laranja para Roteador
-                        ] : ['#374151', '#374151', '#374151'], // Cinza escuro se estiver zerado
+                        ] : ['#374151', '#374151', '#374151'], 
                         borderWidth: 1,
                         borderColor: 'rgba(255,255,255,0.1)'
                     }]
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false, // Garante que o canvas respeite o tamanho do wrapper CSS
+                    maintainAspectRatio: false, 
                     plugins: {
                         legend: {
                             position: 'bottom',
