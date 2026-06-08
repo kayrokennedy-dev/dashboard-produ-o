@@ -19,6 +19,7 @@ function alternarAba(nomeAba) {
 
 // 1. CARREGAR DASHBOARD COM MÉTRICAS AVANÇADAS E GRÁFICO DE PIZZA (GET)
 // 1. CARREGAR DASHBOARD COM MÉTRICAS AVANÇADAS E GRÁFICO DE PIZZA (GET)
+// 1. CARREGAR DASHBOARD COM MÉTRICAS AVANÇADAS E GRÁFICO DE PIZZA (GET)
 async function atualizarDashboard() {
     try {
         const response = await fetch(API_URL);
@@ -43,8 +44,6 @@ async function atualizarDashboard() {
         // CONFIGURAÇÃO DOS MARCOS TEMPORAIS (DATAS)
         // ==========================================
         const agora = new Date();
-        
-        // String de comparação local (Ex: "08/06/2026") para ignorar fuso de horas
         const hojeStringLocal = agora.toLocaleDateString('pt-BR');
         
         const limite15Dias = new Date();
@@ -55,17 +54,14 @@ async function atualizarDashboard() {
         limite30Dias.setDate(agora.getDate() - 30);
         const tempo30 = limite30Dias.getTime();
 
-        // Totais Gerais
         let totalHoje = 0;
         let total15 = 0;
         let total30 = 0;
 
-        // Contadores específicos de equipamentos para HOJE
         let qtdOntHoje = 0;
         let qtdOnuHoje = 0;
         let qtdRoteadorHoje = 0;
 
-        // Objeto organizador por Técnico
         const estatisticasTecnicos = {};
 
         historicoCompleto.forEach(registro => {
@@ -73,7 +69,6 @@ async function atualizarDashboard() {
             if (!registro.data) return;
 
             let dataObjeto = new Date(registro.data);
-            
             if (isNaN(dataObjeto.getTime())) {
                 const dataFormatada = String(registro.data).replace(" ", "T");
                 dataObjeto = new Date(dataFormatada);
@@ -82,7 +77,6 @@ async function atualizarDashboard() {
             const dataReg = dataObjeto.getTime();
             if (isNaN(dataReg)) return;
 
-            // Extrai a string da data do registro no formato brasileiro para comparar
             const dataRegistroStringLocal = dataObjeto.toLocaleDateString('pt-BR');
 
             if (!estatisticasTecnicos[nome]) {
@@ -91,24 +85,29 @@ async function atualizarDashboard() {
 
             estatisticasTecnicos[nome].totalGeral += 1;
 
-            // COMPARAÇÃO BLINDADA: Compara dia com dia, independente da hora ou fuso
             if (dataRegistroStringLocal === hojeStringLocal) {
                 totalHoje++;
                 estatisticasTecnicos[nome].hoje++;
 
-                // Métrica específica de Equipamentos de HOJE
-                const equipStr = String(registro.equipamento || "").toUpperCase();
+                // Captura o nome do equipamento enviado
+                const equipRaw = registro.equipamento || "";
+                const equipStr = String(equipRaw).toUpperCase();
                 
-                if (equipStr.includes("ONT")) {
+                // LOG DE RASTREIO: Mostra no F12 exatamente o que está vindo da planilha hoje
+                console.log(`[Hoje] Registro de ${nome}: "${equipRaw}"`);
+
+                // ORDEM CORRIGIDA: Prioriza "ROTEADOR" para evitar conflito com nomes mistos como "ROTEADOR ZTE ONT"
+                if (equipStr.includes("ROTEADOR") || equipStr.includes("ROTEADORES")) {
+                    qtdRoteadorHoje++;
+                } else if (equipStr.includes("ONT")) {
                     qtdOntHoje++;
                 } else if (equipStr.includes("ONU")) {
                     qtdOnuHoje++;
-                } else if (equipStr.includes("ROTEADOR") || equipStr.includes("ROTEADORES")) {
-                    qtdRoteadorHoje++;
+                } else {
+                    console.warn(`Aparelho não categorizado no gráfico: "${equipRaw}"`);
                 }
             }
             
-            // Para quinzena e mês mantemos o milissegundo pois a margem é de dias inteiros
             if (dataReg >= tempo15) {
                 total15++;
                 estatisticasTecnicos[nome].ultimos15++;
@@ -119,7 +118,7 @@ async function atualizarDashboard() {
             }
         });
 
-        // Atualiza os Cards de Production Geral no topo
+        // Atualiza os Cards de Produção Geral no topo
         document.getElementById("prod-diaria").textContent = totalHoje;
         document.getElementById("prod-quinzenal").textContent = total15;
         document.getElementById("prod-mensal").textContent = total30;
