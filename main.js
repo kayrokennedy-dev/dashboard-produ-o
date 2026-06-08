@@ -1,6 +1,5 @@
-const API_URL = "https://script.google.com/macros/s/AKfycby0FZBLLBYN_8q0MceyVmiW1fBo9NoSCHSFBDKfESHsa4hoj5zeIehkCDXM0f18OycEHA/exec"; 
+const API_URL = "https://script.google.com/macros/s/AKfycbzDNPNaf1-EvZLNUJZWGJ_IaRkhJet7vxhsulNdQOaafksza_H8OK_28yg-Jt6Qk9CZ3A/exec"; 
 
-// Variável global para armazenar os MACs e Seriais que já estão na planilha
 let historicoDeRegistros = [];
 
 function alternarAba(nomeAba) {
@@ -17,7 +16,7 @@ function alternarAba(nomeAba) {
     }
 }
 
-// 1. BUSCAR DADOS (GET) - Atualizado para ler o novo formato do Apps Script
+// 1. CARREGAR DASHBOARD (GET)
 async function atualizarDashboard() {
     try {
         const response = await fetch(API_URL);
@@ -25,8 +24,6 @@ async function atualizarDashboard() {
         
         const respostaObjeto = await response.json();
         const dadosRanking = respostaObjeto.ranking || [];
-        
-        // Salva o histórico na variável global para ser usado no formulário
         historicoDeRegistros = respostaObjeto.historicoCompleto || [];
 
         if (dadosRanking.length === 0) {
@@ -79,104 +76,138 @@ async function atualizarDashboard() {
     }
 }
 
-// ========================================================
-// NOVO: FUNÇÃO QUE DO VALIDA DUPLICADOS ENQUANTO DIGITA
-// ========================================================
-function verificarDuplicados() {
-    const macDigitado = document.getElementById("input-mac").value.trim().toUpperCase();
-    const serialDigitado = document.getElementById("input-serial").value.trim().toUpperCase();
+// ==========================================
+// FUNÇÕES DE MANIPULAÇÃO DO LOTE DINÂMICO
+// ==========================================
 
-    const alertaMac = document.getElementById("alerta-mac");
-    const alertaSerial = document.getElementById("alerta-serial");
+function adicionarLinhaEquipamento() {
+    const container = document.getElementById("container-lote-equipamentos");
+    
+    const novaLinha = document.createElement("div");
+    novaLinha.className = "linha-equipamento-lote";
+    novaLinha.innerHTML = `
+        <input type="text" class="input-mac-lote" placeholder="MAC (Ex: 00:1A:3F...)" required oninput="verificarDuplicadosEmLote()">
+        <input type="text" class="input-serial-lote" placeholder="SERIAL NUMBER" required oninput="verificarDuplicadosEmLote()">
+        <button type="button" class="btn-remover-linha" onclick="removerLinhaEquipamento(this)">✕</button>
+    `;
+    
+    container.appendChild(novaLinha);
+}
 
-    // Reseta os avisos antes de checar novamente
-    alertaMac.textContent = "";
-    alertaSerial.textContent = "";
+function removerLinhaEquipamento(botao) {
+    const container = document.getElementById("container-lote-equipamentos");
+    // Garante que o usuário não delete a última linha restante
+    if (container.children.length > 1) {
+        botao.parentElement.remove();
+        verificarDuplicadosEmLote();
+    }
+}
 
-    // Se o histórico estiver vazio (primeiro dia de uso), não há o que checar
+// Varre todos os inputs dinâmicos abertos comparando com a planilha
+function verificarDuplicadosEmLote() {
+    const inputsMac = document.querySelectorAll(".input-mac-lote");
+    const inputsSerial = document.querySelectorAll(".input-serial-lote");
+
+    // Limpa estilos de alerta anteriores
+    inputsMac.forEach(input => input.style.borderColor = "");
+    inputsSerial.forEach(input => input.style.borderColor = "");
+
     if (historicoDeRegistros.length === 0) return;
 
-    // Varre o histórico procurando match
-    historicoDeRegistros.forEach(registro => {
-        if (macDigitado && registro.mac === macDigitado) {
-            alertaMac.textContent = "⚠️ Este MAC já foi registrado antes!";
+    // Valida MACs
+    inputsMac.forEach(input => {
+        const val = input.value.trim().toUpperCase();
+        if (val && historicoDeRegistros.some(r => r.mac === val)) {
+            input.style.borderColor = "#f59e0b"; // Borda laranja de aviso
         }
-        if (serialDigitado && registro.serial === serialDigitado) {
-            alertaSerial.textContent = "⚠️ Este SERIAL já foi registrado antes!";
+    });
+
+    // Valida Seriais
+    inputsSerial.forEach(input => {
+        const val = input.value.trim().toUpperCase();
+        if (val && historicoDeRegistros.some(r => r.serial === val)) {
+            input.style.borderColor = "#f59e0b";
         }
     });
 }
 
-// 2. ENVIAR FORMULÁRIO (POST)
 // ==========================================
-// FUNÇÃO 2: ENVIAR FORMULÁRIO PARA PLANILHA (POST) - Versão Corrigida para CORS
+// 2. ENVIAR FORMULÁRIO EM LOTE (POST)
 // ==========================================
 async function enviarDadosFormulario(event) {
-    event.preventDefault(); 
+    event.preventDefault();
 
     const btnEnviar = document.getElementById("btn-enviar");
     const msgStatus = document.getElementById("msg-status");
 
     const tecnico = document.getElementById("select-tecnico").value;
-    const mac = document.getElementById("input-mac").value.trim();
-    const serial = document.getElementById("input-serial").value.trim();
-    
-    // Captura o equipamento (Radio - Apenas 1)
     const equipamentoSelecionado = document.querySelector('input[name="equipamento"]:checked');
     const equipamento = equipamentoSelecionado ? equipamentoSelecionado.value : "";
 
-    // CAPTURA OS DEFEITOS (Checkboxes - Podem ser vários)
+    // Captura os defeitos
     const checkboxesDefeitos = document.querySelectorAll('input[name="defeito"]:checked');
     let defeitosSelecionados = [];
-    checkboxesDefeitos.forEach(cb => {
-        defeitosSelecionados.push(cb.value);
-    });
-    
-    // Junta todos os defeitos em um texto só: "Tela/Display, Sistema/Software"
-    // Se nenhum for marcado, envia "Não especificado"
+    checkboxesDefeitos.forEach(cb => defeitosSelecionados.push(cb.value));
     const defeitosTexto = defeitosSelecionados.length > 0 ? defeitosSelecionados.join(", ") : "Não especificado";
 
+    // Pega todas as linhas de MAC e Serial criadas na tela
+    const linhasMac = document.querySelectorAll(".input-mac-lote");
+    const linhasSerial = document.querySelectorAll(".input-serial-lote");
+
+    // Cria a Array contendo um objeto para cada linha preenchida
+    let loteParaEnviar = [];
+    for (let i = 0; i < linhasMac.length; i++) {
+        loteParaEnviar.push({
+            tecnico: tecnico,
+            equipamento: equipamento,
+            mac: linhasMac[i].value.trim(),
+            serial: linhasSerial[i].value.trim(),
+            defeitos: defeitosTexto
+        });
+    }
+
     btnEnviar.disabled = true;
-    btnEnviar.textContent = "Salvando...";
+    btnEnviar.textContent = "Salvando Lote...";
     msgStatus.className = "status-message";
-    msgStatus.textContent = "Enviando dados para a planilha...";
+    msgStatus.textContent = `Enviando ${loteParaEnviar.length} equipamentos...`;
 
     try {
-        // INCLUÍDO O PARÂMETRO &defeitos NA URL
-        const urlComParametros = `${API_URL}?tecnico=${encodeURIComponent(tecnico)}&equipamento=${encodeURIComponent(equipamento)}&mac=${encodeURIComponent(mac)}&serial=${encodeURIComponent(serial)}&defeitos=${encodeURIComponent(defeitosTexto)}`;
-
-        const response = await fetch(urlComParametros);
-        if (!response.ok) throw new Error("Falha na comunicação com o Google Sheets.");
+        // Faz o POST enviando a Array completa dentro do Body
+        const response = await fetch(API_URL, {
+            method: "POST",
+            body: JSON.stringify(loteParaEnviar)
+        });
 
         const resultado = await response.json();
 
-        if (resultado && resultado.ranking) {
+        if (resultado.status === "sucesso") {
             msgStatus.className = "status-message sucesso";
-            msgStatus.textContent = "Sucesso: Baixa registrada com sucesso!";
+            msgStatus.textContent = `Sucesso: ${resultado.mensagem}`;
             
-            // Limpa os campos de texto
-            document.getElementById("input-mac").value = "";
-            document.getElementById("input-serial").value = "";
-            
-            // Desmarca o rádio do equipamento
-            if (equipamentoSelecionado) equipamentoSelecionado.checked = false;
-            
-            // DESMARCA TODAS AS CHECKBOXES DE DEFEITOS
-            checkboxesDefeitos.forEach(cb => cb.checked = false);
-            
-            document.getElementById("alerta-mac").textContent = "";
-            document.getElementById("alerta-serial").textContent = "";
+            // Reseta o container de lotes deixando apenas uma linha limpa
+            const container = document.getElementById("container-lote-equipamentos");
+            container.innerHTML = `
+                <div class="linha-equipamento-lote">
+                    <input type="text" class="input-mac-lote" placeholder="MAC (Ex: 00:1A:3F...)" required oninput="verificarDuplicadosEmLote()">
+                    <input type="text" class="input-serial-lote" placeholder="SERIAL NUMBER" required oninput="verificarDuplicadosEmLote()">
+                    <button type="button" class="btn-remover-linha" onclick="removerLinhaEquipamento(this)">✕</button>
+                </div>
+            `;
 
-            historicoDeRegistros = resultado.historicoCompleto || [];
+            // Limpa defeitos e equipamento selecionado
+            if (equipamentoSelecionado) equipamentoSelecionado.checked = false;
+            checkboxesDefeitos.forEach(cb => cb.checked = false);
+
+            // Atualiza o ranking global na hora
             await atualizarDashboard();
         } else {
-            throw new Error("Resposta inválida do servidor.");
+            throw new Error(resultado.mensagem);
         }
 
     } catch (error) {
-        console.error("Erro no envio:", error);
+        console.error("Erro no envio do lote:", error);
         msgStatus.className = "status-message erro";
-        msgStatus.textContent = "Erro ao registrar. Verifique sua conexão.";
+        msgStatus.textContent = "Erro ao registrar o lote. Tente novamente.";
     } finally {
         btnEnviar.disabled = false;
         btnEnviar.textContent = "Salvar Registro";

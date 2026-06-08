@@ -471,17 +471,19 @@
                         </div>
                     </div>
 
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="input-mac">Endereço MAC:</label>
-                            <input type="text" id="input-mac" placeholder="Ex: 00:1A:3F:F1:4C:C6" required oninput="verificarDuplicados()">
-                            <span id="alerta-mac" class="alerta-input"></span>
+                    <div class="form-group">
+                        <label>Identificação dos Equipamentos (MAC e Serial):</label>
+                        <p class="form-subtitle" style="margin-bottom: 0.5rem;">Adicione quantas unidades foram feitas deste mesmo modelo</p>
+                        
+                        <div id="container-lote-equipamentos">
+                            <div class="linha-equipamento-lote">
+                                <input type="text" class="input-mac-lote" placeholder="MAC (Ex: 00:1A:3F...)" required oninput="verificarDuplicadosEmLote()">
+                                <input type="text" class="input-serial-lote" placeholder="SERIAL NUMBER" required oninput="verificarDuplicadosEmLote()">
+                                <button type="button" class="btn-remover-linha" onclick="removerLinhaEquipamento(this)">✕</button>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="input-serial">SERIAL NUMBER:</label>
-                            <input type="text" id="input-serial" placeholder="Ex: SN123456789" required oninput="verificarDuplicados()">
-                            <span id="alerta-serial" class="alerta-input"></span>
-                        </div>
+
+                        <button type="button" id="btn-adicionar-unidade" onclick="adicionarLinhaEquipamento()">+ Adicionar Outro Equipamento neste Lote</button>
                     </div>
 
                     <div class="form-actions">

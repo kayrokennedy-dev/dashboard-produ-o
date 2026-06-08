@@ -318,3 +318,45 @@ select:focus, input[type="text"]:focus {
     border-color: var(--accent-success);
     background-color: rgba(16, 185, 129, 0.05);
 }
+.linha-equipamento-lote {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    background: rgba(255, 255, 255, 0.02);
+    padding: 0.5rem;
+    border-radius: 6px;
+    border: 1px dashed var(--border);
+}
+
+.btn-remover-linha {
+    background: #ef4444;
+    color: white;
+    border: none;
+    width: 35px;
+    height: 35px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#btn-adicionar-unidade {
+    background: transparent;
+    border: 2px dashed var(--accent);
+    color: var(--accent);
+    padding: 0.8rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    width: 100%;
+    margin-top: 0.5rem;
+    transition: background 0.2s;
+}
+
+#btn-adicionar-unidade:hover {
+    background: rgba(59, 130, 246, 0.05);
+}
