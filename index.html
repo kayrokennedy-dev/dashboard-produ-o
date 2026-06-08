@@ -20,32 +20,48 @@
         </header>
 
         <div id="aba-dashboard" class="aba-conteudo active">
-            <section class="kpi-section">
-                <div class="card-kpi">
-                    <h3>Total de Equipamentos</h3>
-                    <span id="total-equipamentos" class="kpi-value">0</span>
+    
+            <h2 class="section-title">Métricas Gerais da Bancada</h2>
+            <section class="metrics-grid">
+                <div class="card-metric">
+                    <h3>Produção Diária</h3>
+                    <span id="prod-diaria" class="metric-value">0</span>
+                    <p>Total hoje</p>
                 </div>
-                <div class="card-kpi">
-                    <h3>Líder do Turno</h3>
-                    <span id="lider-nome" class="kpi-value highlight">-</span>
+                <div class="card-metric">
+                    <h3>Produção Quinzenal</h3>
+                    <span id="prod-quinzenal" class="metric-value">0</span>
+                    <p>Últimos 15 dias</p>
+                </div>
+                <div class="card-metric">
+                    <h3>Produção Mensal</h3>
+                    <span id="prod-mensal" class="metric-value">0</span>
+                    <p>Últimos 30 dias</p>
+                </div>
+                <div class="card-metric">
+                    <h3>Total Acumulado</h3>
+                    <span id="total-equipamentos" class="metric-value highlight">0</span>
+                    <p>Histórico geral</p>
                 </div>
             </section>
 
             <section class="ranking-section">
-                <h2>Ranking Geral de Produção</h2>
+                <h2>Ranking e Médias de Desempenho</h2>
                 <div class="table-wrapper">
                     <table>
                         <thead>
                             <tr>
                                 <th>Posição</th>
                                 <th>Técnico</th>
-                                <th>Qtd Concluída</th>
-                                <th>Progresso Visual</th>
+                                <th>Total Concluído</th>
+                                <th>Média Diária</th>
+                                <th>Média Quinzenal</th>
+                                <th>Média Mensal</th>
                             </tr>
                         </thead>
                         <tbody id="tabela-ranking">
                             <tr>
-                                <td colspan="4" class="loading">Carregando dados da planilha...</td>
+                                <td colspan="6" class="loading">Processando métricas da planilha...</td>
                             </tr>
                         </tbody>
                     </table>
