@@ -47,6 +47,16 @@
 
             <section class="grafico-section" style="margin-bottom: 2.5rem;">
                 <h2 class="section-title">Distribuição da Produção de Hoje</h2>
+                <div class="grafico-filtros" style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                    <button id="btn-filtro-hoje" class="nav-btn active" onclick="mudarPeriodoGrafico('hoje')">Hoje</button>
+                    <button id="btn-filtro-15" class="nav-btn" onclick="mudarPeriodoGrafico('15dias')">Últimos 15 dias</button>
+                    <button id="btn-filtro-30" class="nav-btn" onclick="mudarPeriodoGrafico('30dias')">Últimos 30 dias</button>
+                    
+                    <div style="display: flex; gap: 0.5rem; align-items: center; background: #1f2937; padding: 0.4rem 0.8rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);">
+                        <label for="filtro-data-especifica" style="color: #9ca3af; font-size: 0.9rem;">Data específica:</label>
+                        <input type="date" id="filtro-data-especifica" onchange="mudarPeriodoGrafico('customizado')" style="background: #111827; color: #fff; border: 1px solid #374151; padding: 0.2rem; border-radius: 4px; cursor: pointer;">
+                    </div>
+                </div>
                 <div class="grafico-container-flex">
                     <div class="cards-equipamentos-hoje">
                         <div class="card-mini-equip">

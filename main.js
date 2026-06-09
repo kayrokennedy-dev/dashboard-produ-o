@@ -2,6 +2,7 @@ let meuGraficoPizza = null; // Guarda o gráfico para podermos destruí-lo e rec
 const API_URL = "https://script.google.com/macros/s/AKfycbzWT2Rf0LBGA_-2m6aXYTWrUmCMcXk7FHWpHcNWrIMU9dQ4E_Fb0u5WTfPIJXCkmxCfHQ/exec"; 
 
 let historicoDeRegistros = [];
+let filtroGraficoAtual = 'hoje'; // MODIFICAÇÃO: Controle global do filtro do gráfico ('hoje', '15dias', '30dias', 'customizado')
 
 function alternarAba(nomeAba) {
     // 1. Esconde todas as abas de conteúdo
@@ -68,9 +69,10 @@ async function atualizarDashboard() {
         let total15 = 0;
         let total30 = 0;
 
-        let qtdOntHoje = 0;
-        let qtdOnuHoje = 0;
-        let qtdRoteadorHoje = 0;
+        // MODIFICAÇÃO: Contadores dinâmicos para aplicar o filtro selecionado pelo chefe
+        let qtdOntFiltrado = 0;
+        let qtdOnuFiltrado = 0;
+        let qtdRoteadorFiltrado = 0;
 
         const estatisticasTecnicos = {};
 
@@ -95,29 +97,11 @@ async function atualizarDashboard() {
 
             estatisticasTecnicos[nome].totalGeral += 1;
 
+            // Alimenta os contadores fixos dos cards superiores
             if (dataRegistroStringLocal === hojeStringLocal) {
                 totalHoje++;
                 estatisticasTecnicos[nome].hoje++;
-
-                // Captura o nome do equipamento enviado
-                const equipRaw = registro.equipamento || "";
-                const equipStr = String(equipRaw).toUpperCase();
-                
-                // LOG DE RASTREIO: Mostra no F12 exatamente o que está vindo da planilha hoje
-                console.log(`[Hoje] Registro de ${nome}: "${equipRaw}"`);
-
-                // ORDEM CORRIGIDA: Prioriza "ROTEADOR" para evitar conflito com nomes mistos como "ROTEADOR ZTE ONT"
-                if (equipStr.includes("ROTEADOR") || equipStr.includes("ROTEADORES")) {
-                    qtdRoteadorHoje++;
-                } else if (equipStr.includes("ONT")) {
-                    qtdOntHoje++;
-                } else if (equipStr.includes("ONU")) {
-                    qtdOnuHoje++;
-                } else {
-                    console.warn(`Aparelho não categorizado no gráfico: "${equipRaw}"`);
-                }
             }
-            
             if (dataReg >= tempo15) {
                 total15++;
                 estatisticasTecnicos[nome].ultimos15++;
@@ -126,18 +110,52 @@ async function atualizarDashboard() {
                 total30++;
                 estatisticasTecnicos[nome].ultimos30++;
             }
+
+            // MODIFICAÇÃO: Lógica para validar se o registro entra ou não no Gráfico de Pizza
+            let incluirNoGrafico = false;
+
+            if (filtroGraficoAtual === 'hoje' && dataRegistroStringLocal === hojeStringLocal) {
+                incluirNoGrafico = true;
+            } else if (filtroGraficoAtual === '15dias' && dataReg >= tempo15) {
+                incluirNoGrafico = true;
+            } else if (filtroGraficoAtual === '30dias' && dataReg >= tempo30) {
+                incluirNoGrafico = true;
+            } else if (filtroGraficoAtual === 'customizado') {
+                const inputData = document.getElementById('filtro-data-especifica').value; // Retorna "AAAA-MM-DD"
+                if (inputData) {
+                    const [ano, mes, dia] = inputData.split('-');
+                    const dataCalendarioStringLocal = `${dia}/${mes}/${ano}`;
+                    if (dataRegistroStringLocal === dataCalendarioStringLocal) {
+                        incluirNoGrafico = true;
+                    }
+                }
+            }
+
+            // Se passar na filtragem de tempo, categoriza os aparelhos para o gráfico
+            if (incluirNoGrafico) {
+                const equipRaw = registro.equipamento || "";
+                const equipStr = String(equipRaw).toUpperCase();
+
+                if (equipStr.includes("ROTEADOR") || equipStr.includes("ROTEADORES")) {
+                    qtdRoteadorFiltrado++;
+                } else if (equipStr.includes("ONT")) {
+                    qtdOntFiltrado++;
+                } else if (equipStr.includes("ONU")) {
+                    qtdOnuFiltrado++;
+                }
+            }
         });
 
-        // Atualiza os Cards de Produção Geral no topo
+        // Atualiza os Cards de Produção Geral no topo (Sempre fixos)
         document.getElementById("prod-diaria").textContent = totalHoje;
         document.getElementById("prod-quinzenal").textContent = total15;
         document.getElementById("prod-mensal").textContent = total30;
         document.getElementById("total-equipamentos").textContent = historicoCompleto.length;
 
-        // Atualiza os mini-cards de equipamentos de hoje
-        document.getElementById("qtd-ont-hoje").textContent = qtdOntHoje;
-        document.getElementById("qtd-onu-hoje").textContent = qtdOnuHoje;
-        document.getElementById("qtd-roteador-hoje").textContent = qtdRoteadorHoje;
+        // MODIFICAÇÃO: Atualiza os mini-cards dinamicamente conforme o filtro ativo
+        document.getElementById("qtd-ont-hoje").textContent = qtdOntFiltrado;
+        document.getElementById("qtd-onu-hoje").textContent = qtdOnuFiltrado;
+        document.getElementById("qtd-roteador-hoje").textContent = qtdRoteadorFiltrado;
 
         // ==========================================
         // RENDERIZAÇÃO / ATUALIZAÇÃO DO GRÁFICO DE PIZZA
@@ -151,15 +169,17 @@ async function atualizarDashboard() {
                 meuGraficoPizza.destroy();
             }
 
-            const temDadosHoje = (qtdOntHoje + qtdOnuHoje + qtdRoteadorHoje) > 0;
+            // MODIFICAÇÃO: Checa se há dados no período filtrado atual
+            const temDadosFiltrados = (qtdOntFiltrado + qtdOnuFiltrado + qtdRoteadorFiltrado) > 0;
 
             meuGraficoPizza = new Chart(ctx, {
                 type: 'pie',
                 data: {
                     labels: ['ONTs', 'ONUs', 'Roteadores'],
                     datasets: [{
-                        data: temDadosHoje ? [qtdOntHoje, qtdOnuHoje, qtdRoteadorHoje] : [1, 1, 1],
-                        backgroundColor: temDadosHoje ? [
+                        // MODIFICAÇÃO: Consome as variáveis contadas de forma dinâmica
+                        data: temDadosFiltrados ? [qtdOntFiltrado, qtdOnuFiltrado, qtdRoteadorFiltrado] : [1, 1, 1],
+                        backgroundColor: temDadosFiltrados ? [
                             '#3b82f6', // Azul para ONT
                             '#10b981', // Verde para ONU
                             '#f59e0b'  // Laranja para Roteador
@@ -238,33 +258,28 @@ function adicionarLinhaEquipamento() {
 
 function removerLinhaEquipamento(botao) {
     const container = document.getElementById("container-lote-equipamentos");
-    // Garante que o usuário não delete a última linha restante
     if (container.children.length > 1) {
         botao.parentElement.remove();
         verificarDuplicadosEmLote();
     }
 }
 
-// Varre todos os inputs dinâmicos abertos comparando com a planilha
 function verificarDuplicadosEmLote() {
     const inputsMac = document.querySelectorAll(".input-mac-lote");
     const inputsSerial = document.querySelectorAll(".input-serial-lote");
 
-    // Limpa estilos de alerta anteriores
     inputsMac.forEach(input => input.style.borderColor = "");
     inputsSerial.forEach(input => input.style.borderColor = "");
 
     if (historicoDeRegistros.length === 0) return;
 
-    // Valida MACs
     inputsMac.forEach(input => {
         const val = input.value.trim().toUpperCase();
         if (val && historicoDeRegistros.some(r => r.mac === val)) {
-            input.style.borderColor = "#f59e0b"; // Borda laranja de aviso
+            input.style.borderColor = "#f59e0b"; 
         }
     });
 
-    // Valida Seriais
     inputsSerial.forEach(input => {
         const val = input.value.trim().toUpperCase();
         if (val && historicoDeRegistros.some(r => r.serial === val)) {
@@ -286,24 +301,21 @@ async function enviarDadosFormulario(event) {
     const equipamentoSelecionado = document.querySelector('input[name="equipamento"]:checked');
     const equipamento = equipamentoSelecionado ? equipamentoSelecionado.value : "";
 
-    // Captura os defeitos
     const checkboxesDefeitos = document.querySelectorAll('input[name="defeito"]:checked');
     let defeitosSelecionados = [];
     checkboxesDefeitos.forEach(cb => defeitosSelecionados.push(cb.value));
     const defeitosTexto = defeitosSelecionados.length > 0 ? defeitosSelecionados.join(", ") : "Não especificado";
 
-    // Pega todas as linhas de MAC e Serial criadas na tela
     const linhasMac = document.querySelectorAll(".input-mac-lote");
-    const linhasSerial = document.querySelectorAll(".input-serial-lote");
+    const linesSerial = document.querySelectorAll(".input-serial-lote");
 
-    // Cria a Array contendo um objeto para cada linha preenchida
     let loteParaEnviar = [];
     for (let i = 0; i < linhasMac.length; i++) {
         loteParaEnviar.push({
             tecnico: tecnico,
             equipamento: equipamento,
             mac: linhasMac[i].value.trim(),
-            serial: linhasSerial[i].value.trim(),
+            serial: linesSerial[i].value.trim(),
             defeitos: defeitosTexto
         });
     }
@@ -314,7 +326,6 @@ async function enviarDadosFormulario(event) {
     msgStatus.textContent = `Enviando ${loteParaEnviar.length} equipamentos...`;
 
     try {
-        // Faz o POST enviando a Array completa dentro do Body
         const response = await fetch(API_URL, {
             method: "POST",
             body: JSON.stringify(loteParaEnviar)
@@ -326,7 +337,6 @@ async function enviarDadosFormulario(event) {
             msgStatus.className = "status-message sucesso";
             msgStatus.textContent = `Sucesso: ${resultado.mensagem}`;
             
-            // Reseta o container de lotes deixando apenas uma linha limpa
             const container = document.getElementById("container-lote-equipamentos");
             container.innerHTML = `
                 <div class="linha-equipamento-lote">
@@ -336,11 +346,9 @@ async function enviarDadosFormulario(event) {
                 </div>
             `;
 
-            // Limpa defeitos e equipamento selecionado
             if (equipamentoSelecionado) equipamentoSelecionado.checked = false;
             checkboxesDefeitos.forEach(cb => cb.checked = false);
 
-            // Atualiza o ranking global na hora
             await atualizarDashboard();
         } else {
             throw new Error(resultado.mensagem);
@@ -360,3 +368,22 @@ document.addEventListener("DOMContentLoaded", () => {
     atualizarDashboard();
     setInterval(atualizarDashboard, 120000);
 });
+
+// MODIFICAÇÃO: Função otimizada para chavear filtros do gráfico e do calendário de forma integrada
+function mudarPeriodoGrafico(tipoFiltro) {
+    filtroGraficoAtual = tipoFiltro;
+    
+    document.getElementById('btn-filtro-hoje').classList.remove('active');
+    document.getElementById('btn-filtro-15').classList.remove('active');
+    document.getElementById('btn-filtro-30').classList.remove('active');
+    
+    if (tipoFiltro !== 'customizado') {
+        document.getElementById('filtro-data-especifica').value = '';
+    }
+    
+    if (tipoFiltro === 'hoje') document.getElementById('btn-filtro-hoje').classList.add('active');
+    if (tipoFiltro === '15dias') document.getElementById('btn-filtro-15').classList.add('active');
+    if (tipoFiltro === '30dias') document.getElementById('btn-filtro-30').classList.add('active');
+    
+    atualizarDashboard();
+}
