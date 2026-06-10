@@ -22,26 +22,11 @@
 
         <div id="aba-dashboard" class="aba-conteudo active">
             <h2 class="section-title">Métricas Gerais da Bancada</h2>
-            <section class="metrics-grid">
-                <div class="card-metric">
-                    <h3>Produção Diária</h3>
-                    <span id="prod-diaria" class="metric-value">0</span>
-                    <p>Total hoje</p>
-                </div>
-                <div class="card-metric">
-                    <h3>Produção Quinzenal</h3>
-                    <span id="prod-quinzenal" class="metric-value">0</span>
-                    <p>Últimos 15 dias</p>
-                </div>
-                <div class="card-metric">
-                    <h3>Produção Mensal</h3>
-                    <span id="prod-mensal" class="metric-value">0</span>
-                    <p>Últimos 30 dias</p>
-                </div>
-                <div class="card-metric">
-                    <h3>Total Acumulado</h3>
-                    <span id="total-equipamentos" class="metric-value highlight">0</span>
-                    <p>Histórico geral</p>
+            
+            <section class="grafico-barras-section" style="margin-bottom: 2.5rem;">
+                <h2 class="section-title">📊 Produção por Técnico (Geral)</h2>
+                <div class="canvas-wrapper" style="position: relative; height: 300px; width: 100%;">
+                    <canvas id="graficoBarrasTecnicos"></canvas>
                 </div>
             </section>
 
@@ -80,6 +65,29 @@
             </section>
         </div>
         <div id="aba-ranking" class="aba-conteudo">
+            <h2 class="section-title">Métricas Gerais da Bancada</h2>
+            <section class="metrics-grid" style="margin-bottom: 2rem;">
+                <div class="card-metric">
+                    <h3>Produção Diária</h3>
+                    <span id="prod-diaria" class="metric-value">0</span>
+                    <p>Total hoje</p>
+                </div>
+                <div class="card-metric">
+                    <h3>Produção Quinzenal</h3>
+                    <span id="prod-quinzenal" class="metric-value">0</span>
+                    <p>Últimos 15 dias</p>
+                </div>
+                <div class="card-metric">
+                    <h3>Produção Mensal</h3>
+                    <span id="prod-mensal" class="metric-value">0</span>
+                    <p>Últimos 30 dias</p>
+                </div>
+                <div class="card-metric">
+                    <h3>Total Acumulado</h3>
+                    <span id="total-equipamentos" class="metric-value highlight">0</span>
+                    <p>Histórico geral</p>
+                </div>
+            </section>
             <section class="ranking-section">
                 <h2 class="section-title">🏆 Ranking e Médias de Desempenho</h2>
                 <div class="table-wrapper">

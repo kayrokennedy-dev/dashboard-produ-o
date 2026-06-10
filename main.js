@@ -1,8 +1,9 @@
 let meuGraficoPizza = null; // Guarda o gráfico para podermos destruí-lo e recriá-lo ao atualizar
+let meuGraficoBarras = null; // NOVO: Guarda a instância do gráfico de barras horizontal
 const API_URL = "https://script.google.com/macros/s/AKfycbzWT2Rf0LBGA_-2m6aXYTWrUmCMcXk7FHWpHcNWrIMU9dQ4E_Fb0u5WTfPIJXCkmxCfHQ/exec"; 
 
 let historicoDeRegistros = [];
-let filtroGraficoAtual = 'hoje'; // MODIFICAÇÃO: Controle global do filtro do gráfico ('hoje', '15dias', '30dias', 'customizado')
+let filtroGraficoAtual = 'hoje'; 
 
 function alternarAba(nomeAba) {
     // 1. Esconde todas as abas de conteúdo
@@ -19,18 +20,18 @@ function alternarAba(nomeAba) {
     if (nomeAba === 'dashboard') {
         document.getElementById('aba-dashboard').classList.add('active');
         document.getElementById('btn-aba-dash').classList.add('active');
-        atualizarDashboard(); // Força o gráfico e os cards a atualizarem
+        atualizarDashboard(); 
     } else if (nomeAba === 'ranking') {
         document.getElementById('aba-ranking').classList.add('active');
         document.getElementById('btn-aba-ranking').classList.add('active');
-        atualizarDashboard(); // Garante que a tabela de ranking puxe os dados mais novos
+        atualizarDashboard(); 
     } else if (nomeAba === 'formulario') {
         document.getElementById('aba-formulario').classList.add('active');
         document.getElementById('btn-aba-form').classList.add('active');
     }
 }
 
-// 1. CARREGAR DASHBOARD COM MÉTRICAS AVANÇADAS E GRÁFICO DE PIZZA (GET)
+// 1. CARREGAR DASHBOARD COM MÉTRICAS AVANÇADAS E GRÁFICOS (GET)
 async function atualizarDashboard() {
     try {
         const response = await fetch(API_URL);
@@ -69,7 +70,6 @@ async function atualizarDashboard() {
         let total15 = 0;
         let total30 = 0;
 
-        // MODIFICAÇÃO: Contadores dinâmicos para aplicar o filtro selecionado pelo chefe
         let qtdOntFiltrado = 0;
         let qtdOnuFiltrado = 0;
         let qtdRoteadorFiltrado = 0;
@@ -97,7 +97,6 @@ async function atualizarDashboard() {
 
             estatisticasTecnicos[nome].totalGeral += 1;
 
-            // Alimenta os contadores fixos dos cards superiores
             if (dataRegistroStringLocal === hojeStringLocal) {
                 totalHoje++;
                 estatisticasTecnicos[nome].hoje++;
@@ -111,7 +110,6 @@ async function atualizarDashboard() {
                 estatisticasTecnicos[nome].ultimos30++;
             }
 
-            // MODIFICAÇÃO: Lógica para validar se o registro entra ou não no Gráfico de Pizza
             let incluirNoGrafico = false;
 
             if (filtroGraficoAtual === 'hoje' && dataRegistroStringLocal === hojeStringLocal) {
@@ -121,7 +119,7 @@ async function atualizarDashboard() {
             } else if (filtroGraficoAtual === '30dias' && dataReg >= tempo30) {
                 incluirNoGrafico = true;
             } else if (filtroGraficoAtual === 'customizado') {
-                const inputData = document.getElementById('filtro-data-especifica').value; // Retorna "AAAA-MM-DD"
+                const inputData = document.getElementById('filtro-data-especifica').value; 
                 if (inputData) {
                     const [ano, mes, dia] = inputData.split('-');
                     const dataCalendarioStringLocal = `${dia}/${mes}/${ano}`;
@@ -131,7 +129,6 @@ async function atualizarDashboard() {
                 }
             }
 
-            // Se passar na filtragem de tempo, categoriza os aparelhos para o gráfico
             if (incluirNoGrafico) {
                 const equipRaw = registro.equipamento || "";
                 const equipStr = String(equipRaw).toUpperCase();
@@ -146,30 +143,79 @@ async function atualizarDashboard() {
             }
         });
 
-        // Atualiza os Cards de Produção Geral no topo (Sempre fixos)
-        document.getElementById("prod-diaria").textContent = totalHoje;
-        document.getElementById("prod-quinzenal").textContent = total15;
-        document.getElementById("prod-mensal").textContent = total30;
-        document.getElementById("total-equipamentos").textContent = historicoCompleto.length;
+        // Atualiza os Cards de Produção Geral (elementos agora ficam na aba de ranking no HTML)
+        const elProdDiaria = document.getElementById("prod-diaria");
+        const elProdQuinzenal = document.getElementById("prod-quinzenal");
+        const elProdMensal = document.getElementById("prod-mensal");
+        const elTotalEquip = document.getElementById("total-equipamentos");
 
-        // MODIFICAÇÃO: Atualiza os mini-cards dinamicamente conforme o filtro ativo
+        if (elProdDiaria) elProdDiaria.textContent = totalHoje;
+        if (elProdQuinzenal) elProdQuinzenal.textContent = total15;
+        if (elProdMensal) elProdMensal.textContent = total30;
+        if (elTotalEquip) elTotalEquip.textContent = historicoCompleto.length;
+
+        // Atualiza os mini-cards de aparelhos
         document.getElementById("qtd-ont-hoje").textContent = qtdOntFiltrado;
         document.getElementById("qtd-onu-hoje").textContent = qtdOnuFiltrado;
         document.getElementById("qtd-roteador-hoje").textContent = qtdRoteadorFiltrado;
+
+        // Gera e ordena a lista de técnicos de forma decrescente para o Ranking e para o Gráfico de Barras
+        const listaOrdenada = Object.values(estatisticasTecnicos);
+        listaOrdenada.sort((a, b) => b.totalGeral - a.totalGeral);
+
+        // ==========================================
+        // NOVO: RENDERIZAÇÃO DO GRÁFICO DE BARRAS HORIZONTAL
+        // ==========================================
+        const canvasBarras = document.getElementById('graficoBarrasTecnicos');
+        if (canvasBarras) {
+            const ctxBarras = canvasBarras.getContext('2d');
+            if (meuGraficoBarras !== null) meuGraficoBarras.destroy();
+
+            // Mapeia os dados decrescentes obtidos da listaOrdenada
+            const labelsTecnicos = listaOrdenada.map(t => t.nome);
+            const dadosTotais = listaOrdenada.map(t => t.totalGeral);
+
+            meuGraficoBarras = new Chart(ctxBarras, {
+                type: 'bar',
+                data: {
+                    labels: labelsTecnicos,
+                    datasets: [{
+                        label: 'Equipamentos Concluídos',
+                        data: dadosTotais,
+                        backgroundColor: '#3b82f6', // Cor azul combinando com o tema
+                        borderRadius: 4,
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', // DEFINE O GRÁFICO COMO HORIZONTAL
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false } // Esconde legenda já que é uma métrica única
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#9ca3af' }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: { color: '#ffffff', font: { weight: 'bold' } }
+                        }
+                    }
+                }
+            });
+        }
 
         // ==========================================
         // RENDERIZAÇÃO / ATUALIZAÇÃO DO GRÁFICO DE PIZZA
         // ==========================================
         const canvasElement = document.getElementById('graficoPizzaEquipamentos');
-        
         if (canvasElement) {
             const ctx = canvasElement.getContext('2d');
-            
-            if (meuGraficoPizza !== null) {
-                meuGraficoPizza.destroy();
-            }
+            if (meuGraficoPizza !== null) meuGraficoPizza.destroy();
 
-            // MODIFICAÇÃO: Checa se há dados no período filtrado atual
             const temDadosFiltrados = (qtdOntFiltrado + qtdOnuFiltrado + qtdRoteadorFiltrado) > 0;
 
             meuGraficoPizza = new Chart(ctx, {
@@ -177,13 +223,8 @@ async function atualizarDashboard() {
                 data: {
                     labels: ['ONTs', 'ONUs', 'Roteadores'],
                     datasets: [{
-                        // MODIFICAÇÃO: Consome as variáveis contadas de forma dinâmica
                         data: temDadosFiltrados ? [qtdOntFiltrado, qtdOnuFiltrado, qtdRoteadorFiltrado] : [1, 1, 1],
-                        backgroundColor: temDadosFiltrados ? [
-                            '#3b82f6', // Azul para ONT
-                            '#10b981', // Verde para ONU
-                            '#f59e0b'  // Laranja para Roteador
-                        ] : ['#374151', '#374151', '#374151'], 
+                        backgroundColor: temDadosFiltrados ? ['#3b82f6', '#10b981', '#f59e0b'] : ['#374151', '#374151', '#374151'], 
                         borderWidth: 1,
                         borderColor: 'rgba(255,255,255,0.1)'
                     }]
@@ -194,10 +235,7 @@ async function atualizarDashboard() {
                     plugins: {
                         legend: {
                             position: 'bottom',
-                            labels: {
-                                color: '#9ca3af',
-                                font: { family: 'sans-serif', size: 12 }
-                            }
+                            labels: { color: '#9ca3af', font: { family: 'sans-serif', size: 12 } }
                         }
                     }
                 }
@@ -207,9 +245,6 @@ async function atualizarDashboard() {
         // ==========================================
         // RENDERIZAÇÃO DA TABELA DO RANKING
         // ==========================================
-        const listaOrdenada = Object.values(estatisticasTecnicos);
-        listaOrdenada.sort((a, b) => b.totalGeral - a.totalGeral);
-
         const tabela = document.getElementById("tabela-ranking");
         tabela.innerHTML = "";
 
@@ -244,7 +279,6 @@ async function atualizarDashboard() {
 
 function adicionarLinhaEquipamento() {
     const container = document.getElementById("container-lote-equipamentos");
-    
     const novaLinha = document.createElement("div");
     novaLinha.className = "linha-equipamento-lote";
     novaLinha.innerHTML = `
@@ -252,7 +286,6 @@ function adicionarLinhaEquipamento() {
         <input type="text" class="input-serial-lote" placeholder="SERIAL NUMBER" required oninput="verificarDuplicadosEmLote()">
         <button type="button" class="btn-remover-linha" onclick="removerLinhaEquipamento(this)">✕</button>
     `;
-    
     container.appendChild(novaLinha);
 }
 
@@ -369,7 +402,6 @@ document.addEventListener("DOMContentLoaded", () => {
     setInterval(atualizarDashboard, 120000);
 });
 
-// MODIFICAÇÃO: Função otimizada para chavear filtros do gráfico e do calendário de forma integrada
 function mudarPeriodoGrafico(tipoFiltro) {
     filtroGraficoAtual = tipoFiltro;
     
