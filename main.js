@@ -188,9 +188,23 @@ async function atualizarDashboard() {
         // Força o cálculo do saldo restante na tela
         calcularDiferencaBalanco();
 
-        // Gera a lista de técnicos e ordena com base na produção de HOJE de forma decrescente
+        // =========================================================================
+        // ORDENAÇÃO INTELIGENTE DO RANKING (Total Geral -> 15 Dias -> 30 Dias)
+        // =========================================================================
         const listaOrdenada = Object.values(estatisticasTecnicos);
-        listaOrdenada.sort((a, b) => b.hoje - a.hoje);
+        
+        listaOrdenada.sort((a, b) => {
+            // 1º Critério: Quem tem o maior histórico acumulado (Total Geral)
+            if (b.totalGeral !== a.totalGeral) {
+                return b.totalGeral - a.totalGeral;
+            }
+            // 2º Critério (Desempate): Quem produziu mais nos últimos 15 dias
+            if (b.ultimos15 !== a.ultimos15) {
+                return b.ultimos15 - a.ultimos15;
+            }
+            // 3º Critério (Segundo Desempate): Quem produziu mais nos últimos 30 dias
+            return b.ultimos30 - a.ultimos30;
+        });
 
         // ==========================================
         // RENDERIZAÇÃO DO GRÁFICO DE BARRAS HORIZONTAL (SÓ HOJE)
@@ -466,19 +480,31 @@ function mudarPeriodoGrafico(tipoFiltro) {
     atualizarDashboard();
 }
 // FUNÇÃO CORRIGIDA: Lógica para focar na meta de entrega (Saída - Entrada)
+// FUNÇÃO ATUALIZADA: Agora soma e exibe os totais gerais de entrada e saída
 function calcularDiferencaBalanco() {
-    // Pega as entradas digitadas manualmente (se estiver vazio, vira 0)
+    // Pega as entradas digitadas manualmente
     const entOnt = parseInt(document.getElementById("input-entrada-ont").value) || 0;
     const entOnu = parseInt(document.getElementById("input-entrada-onu").value) || 0;
     const entRoteador = parseInt(document.getElementById("input-entrada-roteador").value) || 0;
 
-    // Pega as saídas calculadas automaticamente pelo sistema (produção de hoje)
+    // Pega as saídas calculadas automaticamente pelo sistema
     const saiOnt = parseInt(document.getElementById("saida-ont-hoje").textContent) || 0;
     const saiOnu = parseInt(document.getElementById("saida-onu-hoje").textContent) || 0;
     const saiRoteador = parseInt(document.getElementById("saida-roteador-hoje").textContent) || 0;
 
-    // INVERSÃO DA LÓGICA: Agora calcula o quanto foi entregue em relação ao que entrou
-    // Exemplo: Se saíram 1 e entraram 2, o saldo fica -1 (bancada em débito)
+    // --- NOVA PARTE: CÁLCULO DOS TOTAIS GERAIS DA TABELA ---
+    const totalEntradas = entOnt + entOnu + entRoteador;
+    const totalSaidas = saiOnt + saiOnu + saiRoteador;
+
+    // Atualiza os elementos de total na tabela
+    const elTotalEntrada = document.getElementById("total-entrada-hoje");
+    if (elTotalEntrada) elTotalEntrada.textContent = totalEntradas;
+
+    const elTotalSaida = document.getElementById("total-saida-hoje");
+    if (elTotalSaida) elTotalSaida.textContent = totalSaidas;
+    // ------------------------------------------------------
+
+    // Lógica da meta (Saída - Entrada)
     const saldoOnt = saiOnt - entOnt;
     const saldoOnu = saiOnu - entOnu;
     const saldoRoteador = saiRoteador - entRoteador;
@@ -486,17 +512,17 @@ function calcularDiferencaBalanco() {
     // Calcula o saldo total da meta do dia
     const saldoTotalReal = saldoOnt + saldoOnu + saldoRoteador;
 
-    // Atualiza o card de texto do saldo total com a nova regra de cores
+    // Atualiza o card de texto do saldo total
     const elSaldoTotal = document.getElementById("saldo-total-hoje");
     if (elSaldoTotal) {
         elSaldoTotal.textContent = `${saldoTotalReal} un`;
         
         if (saldoTotalReal < 0) {
-            elSaldoTotal.style.color = "#ef4444"; // Vermelho: Produção menor que a entrada (pendência)
+            elSaldoTotal.style.color = "#ef4444"; 
         } else if (saldoTotalReal === 0) {
-            elSaldoTotal.style.color = "#9ca3af"; // Cinza: Tudo o que entrou foi feito e entregue (meta batida)
+            elSaldoTotal.style.color = "#9ca3af"; 
         } else {
-            elSaldoTotal.style.color = "#10b981"; // Verde: Produziram mais do que entrou hoje (limpando estoque antigo)
+            elSaldoTotal.style.color = "#10b981"; 
         }
     }
 
@@ -511,9 +537,6 @@ function calcularDiferencaBalanco() {
             meuGraficoPizzaSaldo.destroy();
         }
 
-        // Para o gráfico de pizza mostrar o "acúmulo de pendências/débitos",
-        // nós vamos olhar para os saldos que estão NEGATIVOS (onde a entrada foi maior que a saída)
-        // Convertemos para positivo com Math.abs apenas para o gráfico conseguir desenhar as fatias
         const debitoOnt = saldoOnt < 0 ? Math.abs(saldoOnt) : 0;
         const debitoOnu = saldoOnu < 0 ? Math.abs(saldoOnu) : 0;
         const debitoRoteador = saldoRoteador < 0 ? Math.abs(saldoRoteador) : 0;
@@ -525,7 +548,6 @@ function calcularDiferencaBalanco() {
             data: {
                 labels: ['ONT Pendente', 'ONU Pendente', 'Roteador Pendente'],
                 datasets: [{
-                    // Se não houver nenhuma pendência (saldo >= 0), o gráfico fica cinza (meta batida!)
                     data: temPendenciaAtiva ? [debitoOnt, debitoOnu, debitoRoteador] : [1, 1, 1],
                     backgroundColor: temPendenciaAtiva ? ['#3b82f6', '#10b981', '#f59e0b'] : ['#374151', '#374151', '#374151'],
                     borderWidth: 1,
@@ -544,7 +566,7 @@ function calcularDiferencaBalanco() {
                         }
                     },
                     tooltip: {
-                        enabled: temPendenciaAtiva // Só mostra o balão se tiver pendências reais
+                        enabled: temPendenciaAtiva
                     }
                 }
             }
