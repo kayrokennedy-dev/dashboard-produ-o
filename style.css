@@ -414,7 +414,11 @@ select:focus, input[type="text"]:focus {
     justify-content: space-around;
     flex-wrap: wrap; /* Se a tela for pequena, o gráfico vai para baixo do card */
 }
-
+.grafico-filtros{
+    display: flex;
+    flex-direction: column;
+    margin: 30px;
+}
 .cards-equipamentos-hoje {
     display: flex;
     flex-direction: column;

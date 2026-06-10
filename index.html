@@ -21,27 +21,73 @@
         </header>
 
         <div id="aba-dashboard" class="aba-conteudo active">
-            <h2 class="section-title">Métricas Gerais da Bancada</h2>
             
-            <section class="grafico-barras-section" style="margin-bottom: 2.5rem;">
-                <h2 class="section-title">📊 Produção por Técnico (Geral)</h2>
-                <div class="canvas-wrapper" style="position: relative; height: 300px; width: 100%;">
-                    <canvas id="graficoBarrasTecnicos"></canvas>
-                </div>
-            </section>
+            
+            <div class="dashboard-top-grid" style="display: flex; gap: 1.5rem; margin-bottom: 2.5rem; flex-wrap: wrap; width: 100%;">
+        
+                <section class="grafico-barras-section" style="flex: 1; min-width: 300px; max-width: 450px; background: #1f2937; padding: 1.5rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); box-sizing: border-box;">
+                    <h2 class="section-title" style="margin-bottom: 1.2rem; font-size: 1.2rem; color: #fff;">📊 Produção por Técnico (Hoje)</h2>
+                    <div class="canvas-wrapper" style="position: relative; height: 280px; width: 100%;">
+                        <canvas id="graficoBarrasTecnicos"></canvas>
+                    </div>
+                </section>
+
+                <section class="balanco-section" style="flex: 2; min-width: 350px; background: #1f2937; padding: 1.5rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
+                    <h2 class="section-title" style="margin-bottom: 1.2rem; font-size: 1.2rem; color: #fff;">📥 Balanço do Dia (Entrada x Saída)</h2>
+                    
+                    <div class="balanco-inputs-tabela" style="width: 100%; flex-grow: 1;">
+                        <table style="width: 100%; border-collapse: collapse; text-align: left; color: #9ca3af;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid #374151;">
+                                    <th style="padding: 0.5rem 0; font-size: 0.85rem; text-transform: uppercase;">Tipo</th>
+                                    <th style="padding: 0.5rem 0; font-size: 0.85rem; text-transform: uppercase; text-align: center;">Entrada</th>
+                                    <th style="padding: 0.5rem 0; font-size: 0.85rem; text-transform: uppercase; text-align: center;">Saída</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                    <td style="padding: 0.85rem 0; color: #fff; font-weight: bold; font-size: 1rem;">ONT</td>
+                                    <td style="text-align: center;">
+                                        <input type="number" id="input-entrada-ont" value="0" min="0" oninput="calcularDiferencaBalanco()" style="width: 80px; background: #111827; border: 1px solid #374151; color: #fff; text-align: center; padding: 0.4rem; border-radius: 4px; font-size: 1rem;">
+                                    </td>
+                                    <td style="text-align: center; color: #3b82f6; font-weight: bold; font-size: 1.2rem;" id="saida-ont-hoje">0</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                    <td style="padding: 0.85rem 0; color: #fff; font-weight: bold; font-size: 1rem;">ONU</td>
+                                    <td style="text-align: center;">
+                                        <input type="number" id="input-entrada-onu" value="0" min="0" oninput="calcularDiferencaBalanco()" style="width: 80px; background: #111827; border: 1px solid #374151; color: #fff; text-align: center; padding: 0.4rem; border-radius: 4px; font-size: 1rem;">
+                                    </td>
+                                    <td style="text-align: center; color: #10b981; font-weight: bold; font-size: 1.2rem;" id="saida-onu-hoje">0</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                    <td style="padding: 0.85rem 0; color: #fff; font-weight: bold; font-size: 1rem;">Roteador</td>
+                                    <td style="text-align: center;">
+                                        <input type="number" id="input-entrada-roteador" value="0" min="0" oninput="calcularDiferencaBalanco()" style="width: 80px; background: #111827; border: 1px solid #374151; color: #fff; text-align: center; padding: 0.4rem; border-radius: 4px; font-size: 1rem;">
+                                    </td>
+                                    <td style="text-align: center; color: #f59e0b; font-weight: bold; font-size: 1.2rem;" id="saida-roteador-hoje">0</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="saldo-grafico-wrapper" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #374151; display: flex; flex-direction: column; align-items: center;">
+                        <h3 style="font-size: 0.95rem; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.75rem; text-align: center;">📊 Proporção do Saldo em Bancada</h3>
+                        
+                        <div class="canvas-pizza-saldo-wrapper" style="position: relative; height: 160px; width: 100%;">
+                            <canvas id="graficoPizzaSaldo"></canvas>
+                        </div>
+
+                        <div id="saldo-geral-box" style="margin-top: 1rem; width: 100%; padding: 0.6rem; background: #111827; border-radius: 6px; text-align: center; font-size: 0.95rem;">
+                            Total Geral Restante: <strong id="saldo-total-hoje" style="color: #fff;">0 un</strong>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
 
             <section class="grafico-section" style="margin-bottom: 2.5rem;">
                 <h2 class="section-title">Distribuição da Produção de Hoje</h2>
-                <div class="grafico-filtros" style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap;">
-                    <button id="btn-filtro-hoje" class="nav-btn active" onclick="mudarPeriodoGrafico('hoje')">Hoje</button>
-                    <button id="btn-filtro-15" class="nav-btn" onclick="mudarPeriodoGrafico('15dias')">Últimos 15 dias</button>
-                    <button id="btn-filtro-30" class="nav-btn" onclick="mudarPeriodoGrafico('30dias')">Últimos 30 dias</button>
-                    
-                    <div style="display: flex; gap: 0.5rem; align-items: center; background: #1f2937; padding: 0.4rem 0.8rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);">
-                        <label for="filtro-data-especifica" style="color: #9ca3af; font-size: 0.9rem;">Data específica:</label>
-                        <input type="date" id="filtro-data-especifica" onchange="mudarPeriodoGrafico('customizado')" style="background: #111827; color: #fff; border: 1px solid #374151; padding: 0.2rem; border-radius: 4px; cursor: pointer;">
-                    </div>
-                </div>
+                
                 <div class="grafico-container-flex">
                     <div class="cards-equipamentos-hoje">
                         <div class="card-mini-equip">
@@ -55,6 +101,17 @@
                         <div class="card-mini-equip">
                             <span>Roteadores</span>
                             <strong id="qtd-roteador-hoje">0</strong>
+                        </div>
+                    </div>
+
+                    <div class="grafico-filtros" style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                        <button id="btn-filtro-hoje" class="nav-btn active" onclick="mudarPeriodoGrafico('hoje')">Hoje</button>
+                        <button id="btn-filtro-15" class="nav-btn" onclick="mudarPeriodoGrafico('15dias')">Últimos 15 dias</button>
+                        <button id="btn-filtro-30" class="nav-btn" onclick="mudarPeriodoGrafico('30dias')">Últimos 30 dias</button>
+                        
+                        <div style="display: flex; gap: 0.5rem; align-items: center; background: #1f2937; padding: 0.4rem 0.8rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);">
+                            <label for="filtro-data-especifica" style="color: #9ca3af; font-size: 0.9rem;">Data específica:</label>
+                            <input type="date" id="filtro-data-especifica" onchange="mudarPeriodoGrafico('customizado')" style="background: #111827; color: #fff; border: 1px solid #374151; padding: 0.2rem; border-radius: 4px; cursor: pointer;">
                         </div>
                     </div>
                     

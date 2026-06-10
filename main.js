@@ -1,5 +1,6 @@
 let meuGraficoPizza = null; // Guarda o gráfico para podermos destruí-lo e recriá-lo ao atualizar
 let meuGraficoBarras = null; // NOVO: Guarda a instância do gráfico de barras horizontal
+let meuGraficoPizzaSaldo = null; // <-- ADICIONE ISSO AQUI PARA O NOVO GRÁFICO
 const API_URL = "https://script.google.com/macros/s/AKfycbzWT2Rf0LBGA_-2m6aXYTWrUmCMcXk7FHWpHcNWrIMU9dQ4E_Fb0u5WTfPIJXCkmxCfHQ/exec"; 
 
 let historicoDeRegistros = [];
@@ -32,6 +33,7 @@ function alternarAba(nomeAba) {
 }
 
 // 1. CARREGAR DASHBOARD COM MÉTRICAS AVANÇADAS E GRÁFICOS (GET)
+// 1. CARREGAR DASHBOARD COM MÉTRICAS AVANÇADAS E GRÁFICOS (GET)
 async function atualizarDashboard() {
     try {
         const response = await fetch(API_URL);
@@ -42,10 +44,10 @@ async function atualizarDashboard() {
         historicoDeRegistros = historicoCompleto;
 
         if (historicoCompleto.length === 0) {
-            document.getElementById("prod-diaria").textContent = "0";
-            document.getElementById("prod-quinzenal").textContent = "0";
-            document.getElementById("prod-mensal").textContent = "0";
-            document.getElementById("total-equipamentos").textContent = "0";
+            if (document.getElementById("prod-diaria")) document.getElementById("prod-diaria").textContent = "0";
+            if (document.getElementById("prod-quinzenal")) document.getElementById("prod-quinzenal").textContent = "0";
+            if (document.getElementById("prod-mensal")) document.getElementById("prod-mensal").textContent = "0";
+            if (document.getElementById("total-equipamentos")) document.getElementById("total-equipamentos").textContent = "0";
             document.getElementById("tabela-ranking").innerHTML = `
                 <tr><td colspan="6" class="loading">Nenhuma baixa registrada ainda.</td></tr>
             `;
@@ -70,6 +72,12 @@ async function atualizarDashboard() {
         let total15 = 0;
         let total30 = 0;
 
+        // Variáveis exclusivas para a SAÍDA REAL de hoje da bancada
+        let saídasOntHoje = 0;
+        let saídasOnuHoje = 0;
+        let saídasRoteadorHoje = 0;
+
+        // Variáveis do gráfico de pizza (que mudam conforme o botão de filtro)
         let qtdOntFiltrado = 0;
         let qtdOnuFiltrado = 0;
         let qtdRoteadorFiltrado = 0;
@@ -97,12 +105,26 @@ async function atualizarDashboard() {
 
             estatisticasTecnicos[nome].totalGeral += 1;
 
+            // Se a baixa foi feita HOJE, computa nos totais gerais e do técnico
             if (dataRegistroStringLocal === hojeStringLocal) {
                 totalHoje++;
                 estatisticasTecnicos[nome].hoje++;
+
+                // Contabiliza estritamente o tipo de equipamento que saiu hoje
+                const equipRaw = registro.equipamento || "";
+                const equipStr = String(equipRaw).toUpperCase();
+                if (equipStr.includes("ROTEADOR") || equipStr.includes("ROTEADORES")) {
+                    saídasRoteadorHoje++;
+                } else if (equipStr.includes("ONT")) {
+                    saídasOntHoje++;
+                } else if (equipStr.includes("ONU")) {
+                    saídasOnuHoje++;
+                }
             }
+            
             if (dataReg >= tempo15) {
                 total15++;
+                estatisticasTecnicos[nome].addQuinzenal = (estatisticasTecnicos[nome].addQuinzenal || 0) + 1; // auxiliar para o ranking
                 estatisticasTecnicos[nome].ultimos15++;
             }
             if (dataReg >= tempo30) {
@@ -110,29 +132,28 @@ async function atualizarDashboard() {
                 estatisticasTecnicos[nome].ultimos30++;
             }
 
-            let incluirNoGrafico = false;
-
+            // Lógica do Filtro do Gráfico de Pizza
+            let incluirNoGraficoPizza = false;
             if (filtroGraficoAtual === 'hoje' && dataRegistroStringLocal === hojeStringLocal) {
-                incluirNoGrafico = true;
+                incluirNoGraficoPizza = true;
             } else if (filtroGraficoAtual === '15dias' && dataReg >= tempo15) {
-                incluirNoGrafico = true;
+                incluirNoGraficoPizza = true;
             } else if (filtroGraficoAtual === '30dias' && dataReg >= tempo30) {
-                incluirNoGrafico = true;
+                incluirNoGraficoPizza = true;
             } else if (filtroGraficoAtual === 'customizado') {
                 const inputData = document.getElementById('filtro-data-especifica').value; 
                 if (inputData) {
                     const [ano, mes, dia] = inputData.split('-');
                     const dataCalendarioStringLocal = `${dia}/${mes}/${ano}`;
                     if (dataRegistroStringLocal === dataCalendarioStringLocal) {
-                        incluirNoGrafico = true;
+                        incluirNoGraficoPizza = true;
                     }
                 }
             }
 
-            if (incluirNoGrafico) {
+            if (incluirNoGraficoPizza) {
                 const equipRaw = registro.equipamento || "";
                 const equipStr = String(equipRaw).toUpperCase();
-
                 if (equipStr.includes("ROTEADOR") || equipStr.includes("ROTEADORES")) {
                     qtdRoteadorFiltrado++;
                 } else if (equipStr.includes("ONT")) {
@@ -143,7 +164,7 @@ async function atualizarDashboard() {
             }
         });
 
-        // Atualiza os Cards de Produção Geral (elementos agora ficam na aba de ranking no HTML)
+        // Atualiza os Cards de Produção Geral na aba de Ranking
         const elProdDiaria = document.getElementById("prod-diaria");
         const elProdQuinzenal = document.getElementById("prod-quinzenal");
         const elProdMensal = document.getElementById("prod-mensal");
@@ -154,50 +175,72 @@ async function atualizarDashboard() {
         if (elProdMensal) elProdMensal.textContent = total30;
         if (elTotalEquip) elTotalEquip.textContent = historicoCompleto.length;
 
-        // Atualiza os mini-cards de aparelhos
-        document.getElementById("qtd-ont-hoje").textContent = qtdOntFiltrado;
-        document.getElementById("qtd-onu-hoje").textContent = qtdOnuFiltrado;
-        document.getElementById("qtd-roteador-hoje").textContent = qtdRoteadorFiltrado;
+        // Atualiza os mini-cards informativos abaixo do gráfico de pizza
+        if (document.getElementById("qtd-ont-hoje")) document.getElementById("qtd-ont-hoje").textContent = qtdOntFiltrado;
+        if (document.getElementById("qtd-onu-hoje")) document.getElementById("qtd-onu-hoje").textContent = qtdOnuFiltrado;
+        if (document.getElementById("qtd-roteador-hoje")) document.getElementById("qtd-roteador-hoje").textContent = qtdRoteadorFiltrado;
 
-        // Gera e ordena a lista de técnicos de forma decrescente para o Ranking e para o Gráfico de Barras
+        // Atualiza IMEDIATAMENTE os valores da coluna de SAÍDA do Balanço do dia
+        if (document.getElementById("saida-ont-hoje")) document.getElementById("saida-ont-hoje").textContent = saídasOntHoje;
+        if (document.getElementById("saida-onu-hoje")) document.getElementById("saida-onu-hoje").textContent = saídasOnuHoje;
+        if (document.getElementById("saida-roteador-hoje")) document.getElementById("saida-roteador-hoje").textContent = saídasRoteadorHoje;
+
+        // Força o cálculo do saldo restante na tela
+        calcularDiferencaBalanco();
+
+        // Gera a lista de técnicos e ordena com base na produção de HOJE de forma decrescente
         const listaOrdenada = Object.values(estatisticasTecnicos);
-        listaOrdenada.sort((a, b) => b.totalGeral - a.totalGeral);
+        listaOrdenada.sort((a, b) => b.hoje - a.hoje);
 
         // ==========================================
-        // NOVO: RENDERIZAÇÃO DO GRÁFICO DE BARRAS HORIZONTAL
+        // RENDERIZAÇÃO DO GRÁFICO DE BARRAS HORIZONTAL (SÓ HOJE)
         // ==========================================
         const canvasBarras = document.getElementById('graficoBarrasTecnicos');
         if (canvasBarras) {
             const ctxBarras = canvasBarras.getContext('2d');
-            if (meuGraficoBarras !== null) meuGraficoBarras.destroy();
+            
+            // IMPORTANTE: Destrói o gráfico anterior para limpar o cache de tamanho do canvas
+            if (meuGraficoBarras !== null) {
+                meuGraficoBarras.destroy();
+            }
 
-            // Mapeia os dados decrescentes obtidos da listaOrdenada
             const labelsTecnicos = listaOrdenada.map(t => t.nome);
-            const dadosTotais = listaOrdenada.map(t => t.totalGeral);
+            const dadosTotais = listaOrdenada.map(t => t.hoje);
+
+            const tetoDinamico = dadosTotais.length > 0 ? Math.max(...dadosTotais) : 10;
 
             meuGraficoBarras = new Chart(ctxBarras, {
                 type: 'bar',
                 data: {
                     labels: labelsTecnicos,
                     datasets: [{
-                        label: 'Equipamentos Concluídos',
+                        label: 'Equipamentos Concluídos Hoje',
                         data: dadosTotais,
-                        backgroundColor: '#3b82f6', // Cor azul combinando com o tema
+                        backgroundColor: '#3b82f6', 
                         borderRadius: 4,
                         borderWidth: 0
                     }]
                 },
                 options: {
-                    indexAxis: 'y', // DEFINE O GRÁFICO COMO HORIZONTAL
+                    indexAxis: 'y', 
                     responsive: true,
-                    maintainAspectRatio: false,
+                    maintainAspectRatio: false, // <-- Força a quebra da proporção padrão quadrada
+                    resizeDelay: 0, // Atualiza o tamanho instantaneamente
+                    layout: {
+                        padding: {
+                            left: 5,
+                            right: 25 // Espaço para o número "17" não cortar na quina da div
+                        }
+                    },
                     plugins: {
-                        legend: { display: false } // Esconde legenda já que é uma métrica única
+                        legend: { display: false } 
                     },
                     scales: {
                         x: {
                             grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                            ticks: { color: '#9ca3af' }
+                            ticks: { color: '#9ca3af', stepSize: 2 },
+                            max: tetoDinamico,
+                            grace: 0
                         },
                         y: {
                             grid: { display: false },
@@ -206,6 +249,9 @@ async function atualizarDashboard() {
                     }
                 }
             });
+
+            // Força o Chart.js a recalcular a largura com base no tamanho novo da DIV do HTML
+            meuGraficoBarras.resize();
         }
 
         // ==========================================
@@ -418,4 +464,90 @@ function mudarPeriodoGrafico(tipoFiltro) {
     if (tipoFiltro === '30dias') document.getElementById('btn-filtro-30').classList.add('active');
     
     atualizarDashboard();
+}
+// FUNÇÃO CORRIGIDA: Lógica para focar na meta de entrega (Saída - Entrada)
+function calcularDiferencaBalanco() {
+    // Pega as entradas digitadas manualmente (se estiver vazio, vira 0)
+    const entOnt = parseInt(document.getElementById("input-entrada-ont").value) || 0;
+    const entOnu = parseInt(document.getElementById("input-entrada-onu").value) || 0;
+    const entRoteador = parseInt(document.getElementById("input-entrada-roteador").value) || 0;
+
+    // Pega as saídas calculadas automaticamente pelo sistema (produção de hoje)
+    const saiOnt = parseInt(document.getElementById("saida-ont-hoje").textContent) || 0;
+    const saiOnu = parseInt(document.getElementById("saida-onu-hoje").textContent) || 0;
+    const saiRoteador = parseInt(document.getElementById("saida-roteador-hoje").textContent) || 0;
+
+    // INVERSÃO DA LÓGICA: Agora calcula o quanto foi entregue em relação ao que entrou
+    // Exemplo: Se saíram 1 e entraram 2, o saldo fica -1 (bancada em débito)
+    const saldoOnt = saiOnt - entOnt;
+    const saldoOnu = saiOnu - entOnu;
+    const saldoRoteador = saiRoteador - entRoteador;
+
+    // Calcula o saldo total da meta do dia
+    const saldoTotalReal = saldoOnt + saldoOnu + saldoRoteador;
+
+    // Atualiza o card de texto do saldo total com a nova regra de cores
+    const elSaldoTotal = document.getElementById("saldo-total-hoje");
+    if (elSaldoTotal) {
+        elSaldoTotal.textContent = `${saldoTotalReal} un`;
+        
+        if (saldoTotalReal < 0) {
+            elSaldoTotal.style.color = "#ef4444"; // Vermelho: Produção menor que a entrada (pendência)
+        } else if (saldoTotalReal === 0) {
+            elSaldoTotal.style.color = "#9ca3af"; // Cinza: Tudo o que entrou foi feito e entregue (meta batida)
+        } else {
+            elSaldoTotal.style.color = "#10b981"; // Verde: Produziram mais do que entrou hoje (limpando estoque antigo)
+        }
+    }
+
+    // ==========================================
+    // RENDERIZAÇÃO DO GRÁFICO DE PIZZA DO SALDO
+    // ==========================================
+    const canvasSaldo = document.getElementById('graficoPizzaSaldo');
+    if (canvasSaldo) {
+        const ctxSaldo = canvasSaldo.getContext('2d');
+        
+        if (meuGraficoPizzaSaldo !== null) {
+            meuGraficoPizzaSaldo.destroy();
+        }
+
+        // Para o gráfico de pizza mostrar o "acúmulo de pendências/débitos",
+        // nós vamos olhar para os saldos que estão NEGATIVOS (onde a entrada foi maior que a saída)
+        // Convertemos para positivo com Math.abs apenas para o gráfico conseguir desenhar as fatias
+        const debitoOnt = saldoOnt < 0 ? Math.abs(saldoOnt) : 0;
+        const debitoOnu = saldoOnu < 0 ? Math.abs(saldoOnu) : 0;
+        const debitoRoteador = saldoRoteador < 0 ? Math.abs(saldoRoteador) : 0;
+
+        const temPendenciaAtiva = (debitoOnt + debitoOnu + debitoRoteador) > 0;
+
+        meuGraficoPizzaSaldo = new Chart(ctxSaldo, {
+            type: 'pie',
+            data: {
+                labels: ['ONT Pendente', 'ONU Pendente', 'Roteador Pendente'],
+                datasets: [{
+                    // Se não houver nenhuma pendência (saldo >= 0), o gráfico fica cinza (meta batida!)
+                    data: temPendenciaAtiva ? [debitoOnt, debitoOnu, debitoRoteador] : [1, 1, 1],
+                    backgroundColor: temPendenciaAtiva ? ['#3b82f6', '#10b981', '#f59e0b'] : ['#374151', '#374151', '#374151'],
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.1)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            color: '#9ca3af',
+                            font: { family: 'sans-serif', size: 11 }
+                        }
+                    },
+                    tooltip: {
+                        enabled: temPendenciaAtiva // Só mostra o balão se tiver pendências reais
+                    }
+                }
+            }
+        });
+    }
 }
