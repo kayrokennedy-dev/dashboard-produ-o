@@ -1,14 +1,17 @@
 let meuGraficoPizza = null; // Guarda o gráfico para podermos destruí-lo e recriá-lo ao atualizar
 let meuGraficoBarras = null; // NOVO: Guarda a instância do gráfico de barras horizontal
 let meuGraficoPizzaSaldo = null; // <-- ADICIONE ISSO AQUI PARA O NOVO GRÁFICO
-const API_URL = "https://script.google.com/macros/s/AKfycbzWT2Rf0LBGA_-2m6aXYTWrUmCMcXk7FHWpHcNWrIMU9dQ4E_Fb0u5WTfPIJXCkmxCfHQ/exec"; 
+let meuGraficoConectores = null;
+const API_URL = "https://script.google.com/macros/s/AKfycbyVgQbFq3IilXWR5vuULMRSrwThO7Gj_rS2AhIQ4g4DPlCtAPClb9Y6xEbhlq6nv1Nysg/exec"; 
 
 let historicoDeRegistros = [];
 let filtroGraficoAtual = 'hoje'; 
+let dataAlvoCalendario = ""; // Guarda a data selecionada no calendário (Formato DD/MM/AAAA)
 
 function alternarAba(nomeAba) {
     // 1. Esconde todas as abas de conteúdo
     document.querySelectorAll('.aba-conteudo').forEach(aba => {
+        aba.style.display = 'none'; // Garante que some tudo
         aba.classList.remove('active');
     });
 
@@ -19,46 +22,64 @@ function alternarAba(nomeAba) {
 
     // 3. Mostra a aba clicada e acende o botão correspondente
     if (nomeAba === 'dashboard') {
+        const aba = document.getElementById('aba-dashboard');
+        if(aba) aba.style.display = 'block';
         document.getElementById('aba-dashboard').classList.add('active');
         document.getElementById('btn-aba-dash').classList.add('active');
         atualizarDashboard(); 
     } else if (nomeAba === 'ranking') {
+        const aba = document.getElementById('aba-ranking');
+        if(aba) aba.style.display = 'block';
         document.getElementById('aba-ranking').classList.add('active');
         document.getElementById('btn-aba-ranking').classList.add('active');
         atualizarDashboard(); 
     } else if (nomeAba === 'formulario') {
+        const aba = document.getElementById('aba-formulario');
+        if(aba) aba.style.display = 'block';
         document.getElementById('aba-formulario').classList.add('active');
         document.getElementById('btn-aba-form').classList.add('active');
+    } else if (nomeAba === 'conectores') {
+        const aba = document.getElementById('aba-conectores');
+        if(aba) aba.style.display = 'block';
+        document.getElementById('aba-conectores').classList.add('active');
+        document.getElementById('btn-aba-conectores').classList.add('active');
     }
 }
 
 // 1. CARREGAR DASHBOARD COM MÉTRICAS AVANÇADAS E GRÁFICOS (GET)
-// 1. CARREGAR DASHBOARD COM MÉTRICAS AVANÇADAS E GRÁFICOS (GET)
 async function atualizarDashboard() {
     try {
-        const response = await fetch(API_URL);
+        const urlSemCache = API_URL + (API_URL.includes('?') ? '&' : '?') + '_ts=' + new Date().getTime();
+        const response = await fetch(urlSemCache);
         if (!response.ok) throw new Error(`Erro: ${response.status}`);
         
         const respostaObjeto = await response.json();
+        
+        if (respostaObjeto && respostaObjeto.status === "sucesso" && !respostaObjeto.historicoCompleto) {
+            console.log("Confirmação de salvamento recebida. Ignorando atualização pesada.");
+            return; 
+        }
+
         const historicoCompleto = respostaObjeto.historicoCompleto || [];
         historicoDeRegistros = historicoCompleto;
 
-        if (historicoCompleto.length === 0) {
+        if (!Array.isArray(historicoCompleto) || historicoCompleto.length === 0) {
             if (document.getElementById("prod-diaria")) document.getElementById("prod-diaria").textContent = "0";
             if (document.getElementById("prod-quinzenal")) document.getElementById("prod-quinzenal").textContent = "0";
             if (document.getElementById("prod-mensal")) document.getElementById("prod-mensal").textContent = "0";
             if (document.getElementById("total-equipamentos")) document.getElementById("total-equipamentos").textContent = "0";
-            document.getElementById("tabela-ranking").innerHTML = `
-                <tr><td colspan="6" class="loading">Nenhuma baixa registrada ainda.</td></tr>
-            `;
+            
+            const tabRanking = document.getElementById("tabela-ranking");
+            if (tabRanking) {
+                tabRanking.innerHTML = `<tr><td colspan="6" class="loading">Nenhuma baixa registrada ainda.</td></tr>`;
+            }
+            processarDadosConectoresDoDashboard(respostaObjeto);
             return;
         }
 
-        // ==========================================
         // CONFIGURAÇÃO DOS MARCOS TEMPORAIS (DATAS)
-        // ==========================================
         const agora = new Date();
-        const hojeStringLocal = agora.toLocaleDateString('pt-BR');
+        const hojeStringLocal = agora.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
         
         const limite15Dias = new Date();
         limite15Dias.setDate(agora.getDate() - 15);
@@ -72,12 +93,10 @@ async function atualizarDashboard() {
         let total15 = 0;
         let total30 = 0;
 
-        // Variáveis exclusivas para a SAÍDA REAL de hoje da bancada
         let saídasOntHoje = 0;
         let saídasOnuHoje = 0;
         let saídasRoteadorHoje = 0;
 
-        // Variáveis do gráfico de pizza (que mudam conforme o botão de filtro)
         let qtdOntFiltrado = 0;
         let qtdOnuFiltrado = 0;
         let qtdRoteadorFiltrado = 0;
@@ -85,46 +104,51 @@ async function atualizarDashboard() {
         const estatisticasTecnicos = {};
 
         historicoCompleto.forEach(registro => {
+            if (!registro) return; 
             const nome = registro.tecnico || registro.Tecnico || "Sem Nome";
             if (!registro.data) return;
 
-            let dataObjeto = new Date(registro.data);
-            if (isNaN(dataObjeto.getTime())) {
-                const dataFormatada = String(registro.data).replace(" ", "T");
-                dataObjeto = new Date(dataFormatada);
+            // TRATAMENTO ULTRA BLINDADO DE DATA
+            let dataObjeto;
+            let dataRaw = String(registro.data).trim();
+
+            if (dataRaw.includes(" ")) dataRaw = dataRaw.split(" ")[0];
+            if (dataRaw.includes("T")) dataRaw = dataRaw.split("T")[0];
+
+            if (dataRaw.includes("-")) {
+                const [ano, mes, dia] = dataRaw.split("-");
+                dataObjeto = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia));
+            } else if (dataRaw.includes("/")) {
+                const [dia, mes, ano] = dataRaw.split("/");
+                dataObjeto = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia));
+            } else {
+                dataObjeto = new Date(registro.data);
             }
+
+            if (isNaN(dataObjeto.getTime())) return;
 
             const dataReg = dataObjeto.getTime();
-            if (isNaN(dataReg)) return;
+            const dataRegistroStringLocal = dataObjeto.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
-            const dataRegistroStringLocal = dataObjeto.toLocaleDateString('pt-BR');
-
+            // INICIALIZA O TÉCNICO NO OBJETO DE ESTATÍSTICAS
             if (!estatisticasTecnicos[nome]) {
-                estatisticasTecnicos[nome] = { nome: nome, totalGeral: 0, hoje: 0, ultimos15: 0, ultimos30: 0 };
+                estatisticasTecnicos[nome] = { nome: nome, totalGeral: 0, hoje: 0, ultimos15: 0, ultimos30: 0, customizado: 0 };
             }
 
-            estatisticasTecnicos[nome].totalGeral += 1;
-
-            // Se a baixa foi feita HOJE, computa nos totais gerais e do técnico
+            // CONTADORES FIXOS DE TOPO (SEMPRE BASEADOS NO DIA DE HOJE REAL)
             if (dataRegistroStringLocal === hojeStringLocal) {
                 totalHoje++;
                 estatisticasTecnicos[nome].hoje++;
 
-                // Contabiliza estritamente o tipo de equipamento que saiu hoje
                 const equipRaw = registro.equipamento || "";
                 const equipStr = String(equipRaw).toUpperCase();
-                if (equipStr.includes("ROTEADOR") || equipStr.includes("ROTEADORES")) {
-                    saídasRoteadorHoje++;
-                } else if (equipStr.includes("ONT")) {
-                    saídasOntHoje++;
-                } else if (equipStr.includes("ONU")) {
-                    saídasOnuHoje++;
-                }
+                if (equipStr.includes("ROTEADOR") || equipStr.includes("ROTEADORES")) saídasRoteadorHoje++;
+                else if (equipStr.includes("ONT")) saídasOntHoje++;
+                else if (equipStr.includes("ONU")) saídasOnuHoje++;
             }
             
             if (dataReg >= tempo15) {
                 total15++;
-                estatisticasTecnicos[nome].addQuinzenal = (estatisticasTecnicos[nome].addQuinzenal || 0) + 1; // auxiliar para o ranking
                 estatisticasTecnicos[nome].ultimos15++;
             }
             if (dataReg >= tempo30) {
@@ -132,94 +156,70 @@ async function atualizarDashboard() {
                 estatisticasTecnicos[nome].ultimos30++;
             }
 
-            // Lógica do Filtro do Gráfico de Pizza
-            let incluirNoGraficoPizza = false;
-            if (filtroGraficoAtual === 'hoje' && dataRegistroStringLocal === hojeStringLocal) {
-                incluirNoGraficoPizza = true;
-            } else if (filtroGraficoAtual === '15dias' && dataReg >= tempo15) {
-                incluirNoGraficoPizza = true;
-            } else if (filtroGraficoAtual === '30dias' && dataReg >= tempo30) {
-                incluirNoGraficoPizza = true;
-            } else if (filtroGraficoAtual === 'customizado') {
-                const inputData = document.getElementById('filtro-data-especifica').value; 
-                if (inputData) {
-                    const [ano, mes, dia] = inputData.split('-');
-                    const dataCalendarioStringLocal = `${dia}/${mes}/${ano}`;
-                    if (dataRegistroStringLocal === dataCalendarioStringLocal) {
-                        incluirNoGraficoPizza = true;
-                    }
-                }
+            estatisticasTecnicos[nome].totalGeral += 1;
+
+            // CASO SEJA FILTRO POR CALENDÁRIO ESPECÍFICO
+            if (filtroGraficoAtual === 'customizado' && dataRegistroStringLocal === dataAlvoCalendario) {
+                estatisticasTecnicos[nome].customizado++;
             }
+
+            // DEFINE SE O REGISTRO ENTRA NOS GRÁFICOS DINÂMICOS
+            let incluirNoGraficoPizza = false;
+            if (filtroGraficoAtual === 'hoje' && dataRegistroStringLocal === hojeStringLocal) incluirNoGraficoPizza = true;
+            else if (filtroGraficoAtual === '15dias' && dataReg >= tempo15) incluirNoGraficoPizza = true;
+            else if (filtroGraficoAtual === '30dias' && dataReg >= tempo30) incluirNoGraficoPizza = true;
+            else if (filtroGraficoAtual === 'customizado' && dataRegistroStringLocal === dataAlvoCalendario) incluirNoGraficoPizza = true;
+            else if (filtroGraficoAtual === 'tudo') incluirNoGraficoPizza = true;
 
             if (incluirNoGraficoPizza) {
                 const equipRaw = registro.equipamento || "";
                 const equipStr = String(equipRaw).toUpperCase();
-                if (equipStr.includes("ROTEADOR") || equipStr.includes("ROTEADORES")) {
-                    qtdRoteadorFiltrado++;
-                } else if (equipStr.includes("ONT")) {
-                    qtdOntFiltrado++;
-                } else if (equipStr.includes("ONU")) {
-                    qtdOnuFiltrado++;
-                }
+                if (equipStr.includes("ROTEADOR") || equipStr.includes("ROTEADORES")) qtdRoteadorFiltrado++;
+                else if (equipStr.includes("ONT")) qtdOntFiltrado++;
+                else if (equipStr.includes("ONU")) qtdOnuFiltrado++;
             }
         });
 
-        // Atualiza os Cards de Produção Geral na aba de Ranking
-        const elProdDiaria = document.getElementById("prod-diaria");
-        const elProdQuinzenal = document.getElementById("prod-quinzenal");
-        const elProdMensal = document.getElementById("prod-mensal");
-        const elTotalEquip = document.getElementById("total-equipamentos");
+        // Atualiza os KPIs superiores na tela
+        if (document.getElementById("prod-diaria")) document.getElementById("prod-diaria").textContent = totalHoje;
+        if (document.getElementById("prod-quinzenal")) document.getElementById("prod-quinzenal").textContent = total15;
+        if (document.getElementById("prod-mensal")) document.getElementById("prod-mensal").textContent = total30;
+        if (document.getElementById("total-equipamentos")) document.getElementById("total-equipamentos").textContent = historicoCompleto.length;
 
-        if (elProdDiaria) elProdDiaria.textContent = totalHoje;
-        if (elProdQuinzenal) elProdQuinzenal.textContent = total15;
-        if (elProdMensal) elProdMensal.textContent = total30;
-        if (elTotalEquip) elTotalEquip.textContent = historicoCompleto.length;
-
-        // Atualiza os mini-cards informativos abaixo do gráfico de pizza
+        // Atualiza os contadores internos do gráfico de pizza conforme o filtro ativo
         if (document.getElementById("qtd-ont-hoje")) document.getElementById("qtd-ont-hoje").textContent = qtdOntFiltrado;
         if (document.getElementById("qtd-onu-hoje")) document.getElementById("qtd-onu-hoje").textContent = qtdOnuFiltrado;
         if (document.getElementById("qtd-roteador-hoje")) document.getElementById("qtd-roteador-hoje").textContent = qtdRoteadorFiltrado;
 
-        // Atualiza IMEDIATAMENTE os valores da coluna de SAÍDA do Balanço do dia
+        // Atualiza os dados de Saídas do Balanço do Dia (Sempre Hoje)
         if (document.getElementById("saida-ont-hoje")) document.getElementById("saida-ont-hoje").textContent = saídasOntHoje;
         if (document.getElementById("saida-onu-hoje")) document.getElementById("saida-onu-hoje").textContent = saídasOnuHoje;
         if (document.getElementById("saida-roteador-hoje")) document.getElementById("saida-roteador-hoje").textContent = saídasRoteadorHoje;
 
-        // Força o cálculo do saldo restante na tela
         calcularDiferencaBalanco();
 
-        // =========================================================================
-        // ORDENAÇÃO INTELIGENTE DO RANKING (Total Geral -> 15 Dias -> 30 Dias)
-        // =========================================================================
         const listaOrdenada = Object.values(estatisticasTecnicos);
-        
-        listaOrdenada.sort((a, b) => {
-            // 1º Critério: Quem tem o maior histórico acumulado (Total Geral)
-            if (b.totalGeral !== a.totalGeral) {
-                return b.totalGeral - a.totalGeral;
-            }
-            // 2º Critério (Desempate): Quem produziu mais nos últimos 15 dias
-            if (b.ultimos15 !== a.ultimos15) {
-                return b.ultimos15 - a.ultimos15;
-            }
-            // 3º Critério (Segundo Desempate): Quem produziu mais nos últimos 30 dias
-            return b.ultimos30 - a.ultimos30;
-        });
+        listaOrdenada.sort((a, b) => b.totalGeral - a.totalGeral);
 
-        // ==========================================
-        // RENDERIZAÇÃO DO GRÁFICO DE BARRAS HORIZONTAL (SÓ HOJE)
-        // ==========================================
+        // --- ATUALIZAÇÃO DO GRÁFICO DE BARRAS DOS TÉCNICOS ---
         const canvasBarras = document.getElementById('graficoBarrasTecnicos');
         if (canvasBarras) {
             const ctxBarras = canvasBarras.getContext('2d');
-            
-            // IMPORTANTE: Destrói o gráfico anterior para limpar o cache de tamanho do canvas
-            if (meuGraficoBarras !== null) {
-                meuGraficoBarras.destroy();
-            }
+            if (meuGraficoBarras !== null) meuGraficoBarras.destroy();
 
             const labelsTecnicos = listaOrdenada.map(t => t.nome);
-            const dadosTotais = listaOrdenada.map(t => t.hoje);
+            const dadosTotais = listaOrdenada.map(t => {
+                if (filtroGraficoAtual === 'hoje') return t.hoje;
+                if (filtroGraficoAtual === 'customizado') return t.customizado;
+                if (filtroGraficoAtual === '15dias') return t.ultimos15;
+                if (filtroGraficoAtual === '30dias') return t.ultimos30;
+                return t.totalGeral;
+            });
+            
+            const labelDinamica = filtroGraficoAtual === 'hoje' ? 'Equipamentos Concluídos Hoje' :
+                                  filtroGraficoAtual === 'customizado' ? `Equipamentos em ${dataAlvoCalendario}` :
+                                  filtroGraficoAtual === '15dias' ? 'Equipamentos (Últimos 15 dias)' : 
+                                  filtroGraficoAtual === '30dias' ? 'Equipamentos (Últimos 30 dias)' : 'Total Histórico';
 
             const tetoDinamico = dadosTotais.length > 0 ? Math.max(...dadosTotais) : 10;
 
@@ -228,7 +228,7 @@ async function atualizarDashboard() {
                 data: {
                     labels: labelsTecnicos,
                     datasets: [{
-                        label: 'Equipamentos Concluídos Hoje',
+                        label: labelDinamica,
                         data: dadosTotais,
                         backgroundColor: '#3b82f6', 
                         borderRadius: 4,
@@ -238,17 +238,8 @@ async function atualizarDashboard() {
                 options: {
                     indexAxis: 'y', 
                     responsive: true,
-                    maintainAspectRatio: false, // <-- Força a quebra da proporção padrão quadrada
-                    resizeDelay: 0, // Atualiza o tamanho instantaneamente
-                    layout: {
-                        padding: {
-                            left: 5,
-                            right: 25 // Espaço para o número "17" não cortar na quina da div
-                        }
-                    },
-                    plugins: {
-                        legend: { display: false } 
-                    },
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
                     scales: {
                         x: {
                             grid: { color: 'rgba(255, 255, 255, 0.05)' },
@@ -263,14 +254,9 @@ async function atualizarDashboard() {
                     }
                 }
             });
-
-            // Força o Chart.js a recalcular a largura com base no tamanho novo da DIV do HTML
-            meuGraficoBarras.resize();
         }
 
-        // ==========================================
-        // RENDERIZAÇÃO / ATUALIZAÇÃO DO GRÁFICO DE PIZZA
-        // ==========================================
+        // --- GRÁFICO DE PIZZA GERAL ---
         const canvasElement = document.getElementById('graficoPizzaEquipamentos');
         if (canvasElement) {
             const ctx = canvasElement.getContext('2d');
@@ -291,7 +277,7 @@ async function atualizarDashboard() {
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false, 
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: {
                             position: 'bottom',
@@ -302,40 +288,221 @@ async function atualizarDashboard() {
             });
         }
 
-        // ==========================================
-        // RENDERIZAÇÃO DA TABELA DO RANKING
-        // ==========================================
+        // TABELA DE RANKING
         const tabela = document.getElementById("tabela-ranking");
-        tabela.innerHTML = "";
+        if (tabela) {
+            tabela.innerHTML = "";
+            listaOrdenada.forEach((tecnico, index) => {
+                const posicao = index + 1;
+                const classePosicao = posicao <= 3 ? `pos-${posicao}` : "";
 
-        listaOrdenada.forEach((tecnico, index) => {
-            const posicao = index + 1;
-            const classePosicao = posicao <= 3 ? `pos-${posicao}` : "";
+                const mediaDiaria = tecnico.hoje.toFixed(1);
+                const mediaQuinzenal = (tecnico.ultimos15 / 15).toFixed(1);
+                const mediaMensal = (tecnico.ultimos30 / 30).toFixed(1);
 
-            const mediaDiaria = tecnico.hoje.toFixed(1);
-            const mediaQuinzenal = (tecnico.ultimos15 / 15).toFixed(1);
-            const mediaMensal = (tecnico.ultimos30 / 30).toFixed(1);
-
-            const row = document.createElement("tr");
-            row.innerHTML = `
-                <td class="${classePosicao}">#${posicao}</td>
-                <td><strong>${tecnico.nome}</strong></td>
-                <td>${tecnico.totalGeral} un</td>
-                <td>${mediaDiaria} un/dia</td>
-                <td>${mediaQuinzenal} un/dia</td>
-                <td>${mediaMensal} un/dia</td>
-            `;
-            tabela.appendChild(row);
-        });
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td class="${classePosicao}">#${posicao}</td>
+                    <td><strong>${tecnico.nome}</strong></td>
+                    <td>${tecnico.totalGeral} un</td>
+                    <td>${mediaDiaria} un/dia</td>
+                    <td>${mediaQuinzenal} un/dia</td>
+                    <td>${mediaMensal} un/dia</td>
+                `;
+                tabela.appendChild(row);
+            });
+        }
+        
+        processarDadosConectoresDoDashboard(respostaObjeto);
 
     } catch (error) {
         console.error("Erro ao atualizar painel de métricas:", error);
     }
 }
 
-// ==========================================
-// FUNÇÕES DE MANIPULAÇÃO DO LOTE DINÂMICO
-// ==========================================
+// FUNÇÃO ACIONADA PELO BOTÃO "FILTRAR DIA" DO CALENDÁRIO
+function aplicarFiltroCalendario() {
+    const dataInput = document.getElementById('filtro-data-dia')?.value;
+    
+    if (!dataInput) {
+        alert("Por favor, selecione uma data no calendário primeiro!");
+        return;
+    }
+
+    const [ano, mes, dia] = dataInput.split('-');
+    dataAlvoCalendario = `${dia.padStart(2, '0')}/${mes.padStart(2, '0')}/${ano}`;
+    
+    filtroGraficoAtual = 'customizado';
+    
+    // Reseta o visual dos botões rápidos
+    document.getElementById('btn-filtro-hoje')?.classList.remove('active');
+    document.getElementById('btn-filtro-15')?.classList.remove('active');
+    document.getElementById('btn-filtro-30')?.classList.remove('active');
+
+    atualizarDashboard();
+}
+
+function mudarPeriodoGrafico(tipoFiltro) {
+    filtroGraficoAtual = tipoFiltro;
+    
+    document.getElementById('btn-filtro-hoje')?.classList.remove('active');
+    document.getElementById('btn-filtro-15')?.classList.remove('active');
+    document.getElementById('btn-filtro-30')?.classList.remove('active');
+    
+    if (tipoFiltro === 'hoje') document.getElementById('btn-filtro-hoje')?.classList.add('active');
+    if (tipoFiltro === '15dias') document.getElementById('btn-filtro-15')?.classList.add('active');
+    if (tipoFiltro === '30dias') document.getElementById('btn-filtro-30')?.classList.add('active');
+    
+    // Limpa o input do calendário se clicou num período pré-definido
+    if (tipoFiltro !== 'customizado') {
+        const inputCalendario = document.getElementById('filtro-data-dia');
+        if (inputCalendario) inputCalendario.value = '';
+    }
+    
+    atualizarDashboard();
+}
+
+function processarDadosConectoresDoDashboard(respostaObjeto) {
+    if (!respostaObjeto) return;
+    
+    const conectoresDados = {
+        nasdaRec: parseInt(respostaObjeto.nasdaRec) || 0,
+        nasdaSuc: parseInt(respostaObjeto.nasdaSuc) || 0,
+        maxprintRec: parseInt(respostaObjeto.maxprintRec) || 0,
+        maxprintSuc: parseInt(respostaObjeto.maxprintSuc) || 0,
+        transcendRec: parseInt(respostaObjeto.transcendRec) || 0,
+        transcendSuc: parseInt(respostaObjeto.transcendSuc) || 0
+    };
+
+    renderizarGraficoConectores(conectoresDados);
+}
+
+function renderizarGraficoConectores(dados) {
+    const ctx = document.getElementById('graficoBarrasConectores');
+    if (!ctx) return;
+
+    const nasdaRec = dados.nasdaRec || 0;
+    const nasdaSuc = dados.nasdaSuc || 0;
+    const maxprintRec = dados.maxprintRec || 0;
+    const maxprintSuc = dados.maxprintSuc || 0;
+    const transcendRec = dados.transcendRec || 0;
+    const transcendSuc = dados.transcendSuc || 0;
+
+    // SOMATORIA CORRETA PARA EXIBIÇÃO NAS CAIXINHAS ABAIXO DO GRÁFICO
+    if(document.getElementById('total-apc-hoje')) document.getElementById('total-apc-hoje').textContent = nasdaRec + nasdaSuc;
+    if(document.getElementById('total-upc-hoje')) document.getElementById('total-upc-hoje').textContent = maxprintRec + maxprintSuc;
+    if(document.getElementById('total-transcend-hoje')) document.getElementById('total-transcend-hoje').textContent = transcendRec + transcendSuc;
+    
+    const totalGeralRecuperados = nasdaRec + maxprintRec + transcendRec;
+    if(document.getElementById('total-conectores-recuperados-geral')) {
+        document.getElementById('total-conectores-recuperados-geral').textContent = totalGeralRecuperados;
+    }
+
+    if (meuGraficoConectores) meuGraficoConectores.destroy();
+
+    meuGraficoConectores = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['CONECTOR NASDA APC', 'CONECTOR MAXPRINT APC', 'CONECTOR TRANSCEND APC'],
+            datasets: [
+                {
+                    label: 'Recuperados',
+                    data: [nasdaRec, maxprintRec, transcendRec],
+                    backgroundColor: '#10b981', 
+                    borderColor: '#10b981',
+                    borderWidth: 1,
+                    barPercentage: 0.7,
+                    categoryPercentage: 0.6
+                },
+                {
+                    label: 'Sucata',
+                    data: [nasdaSuc, maxprintSuc, transcendSuc],
+                    backgroundColor: '#ef4444', 
+                    borderColor: '#ef4444',
+                    borderWidth: 1,
+                    barPercentage: 0.7,
+                    categoryPercentage: 0.6
+                }
+            ]
+        },
+        options: {
+            indexAxis: 'y', 
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#9ca3af', stepSize: 1 } },
+                y: { grid: { display: false }, ticks: { color: '#ffffff', font: { weight: 'bold', size: 10 } } }
+            },
+            plugins: { legend: { labels: { color: '#9ca3af' } } }
+        }
+    });
+}
+
+function calcularDiferencaBalanco() {
+    const entOnt = parseInt(document.getElementById("input-entrada-ont")?.value) || 0;
+    const entOnu = parseInt(document.getElementById("input-entrada-onu")?.value) || 0;
+    const entRoteador = parseInt(document.getElementById("input-entrada-roteador")?.value) || 0;
+
+    const saiOnt = parseInt(document.getElementById("saida-ont-hoje")?.textContent) || 0;
+    const saiOnu = parseInt(document.getElementById("saida-onu-hoje")?.textContent) || 0;
+    const saiRoteador = parseInt(document.getElementById("saida-roteador-hoje")?.textContent) || 0;
+
+    const totalEntradas = entOnt + entOnu + entRoteador;
+    const totalSaidas = saiOnt + saiOnu + saiRoteador;
+
+    const elTotalEntrada = document.getElementById("total-entrada-hoje");
+    if (elTotalEntrada) elTotalEntrada.textContent = totalEntradas;
+
+    const elTotalSaida = document.getElementById("total-saida-hoje");
+    if (elTotalSaida) elTotalSaida.textContent = totalSaidas;
+
+    const saldoOnt = saiOnt - entOnt;
+    const saldoOnu = saiOnu - entOnu;
+    const saldoRoteador = saiRoteador - entRoteador;
+
+    const saldoTotalReal = saldoOnt + saldoOnu + saldoRoteador;
+
+    const elSaldoTotal = document.getElementById("saldo-total-hoje");
+    if (elSaldoTotal) {
+        elSaldoTotal.textContent = `${saldoTotalReal} un`;
+        if (saldoTotalReal < 0) elSaldoTotal.style.color = "#ef4444"; 
+        else if (saldoTotalReal === 0) elSaldoTotal.style.color = "#9ca3af"; 
+        else elSaldoTotal.style.color = "#10b981"; 
+    }
+
+    const canvasSaldo = document.getElementById('graficoPizzaSaldo');
+    if (canvasSaldo) {
+        const ctxSaldo = canvasSaldo.getContext('2d');
+        if (meuGraficoPizzaSaldo !== null) meuGraficoPizzaSaldo.destroy();
+
+        const debitoOnt = saldoOnt < 0 ? Math.abs(saldoOnt) : 0;
+        const debitoOnu = saldoOnu < 0 ? Math.abs(saldoOnu) : 0;
+        const debitoRoteador = saldoRoteador < 0 ? Math.abs(saldoRoteador) : 0;
+
+        const temPendenciaAtiva = (debitoOnt + debitoOnu + debitoRoteador) > 0;
+
+        meuGraficoPizzaSaldo = new Chart(ctxSaldo, {
+            type: 'pie',
+            data: {
+                labels: ['ONT Pendente', 'ONU Pendente', 'Roteador Pendente'],
+                datasets: [{
+                    data: temPendenciaAtiva ? [debitoOnt, debitoOnu, debitoRoteador] : [1, 1, 1],
+                    backgroundColor: temPendenciaAtiva ? ['#3b82f6', '#10b981', '#f59e0b'] : ['#374151', '#374151', '#374151'],
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.1)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right', labels: { color: '#9ca3af', font: { family: 'sans-serif', size: 11 } } },
+                    tooltip: { enabled: temPendenciaAtiva }
+                }
+            }
+        });
+    }
+}
 
 function adicionarLinhaEquipamento() {
     const container = document.getElementById("container-lote-equipamentos");
@@ -381,9 +548,6 @@ function verificarDuplicadosEmLote() {
     });
 }
 
-// ==========================================
-// 2. ENVIAR FORMULÁRIO EM LOTE (POST)
-// ==========================================
 async function enviarDadosFormulario(event) {
     event.preventDefault();
 
@@ -399,15 +563,15 @@ async function enviarDadosFormulario(event) {
     checkboxesDefeitos.forEach(cb => defeitosSelecionados.push(cb.value));
     const defeitosTexto = defeitosSelecionados.length > 0 ? defeitosSelecionados.join(", ") : "Não especificado";
 
-    const linhasMac = document.querySelectorAll(".input-mac-lote");
+    const linesMac = document.querySelectorAll(".input-mac-lote");
     const linesSerial = document.querySelectorAll(".input-serial-lote");
 
     let loteParaEnviar = [];
-    for (let i = 0; i < linhasMac.length; i++) {
+    for (let i = 0; i < linesMac.length; i++) {
         loteParaEnviar.push({
             tecnico: tecnico,
             equipamento: equipamento,
-            mac: linhasMac[i].value.trim(),
+            mac: linesMac[i].value.trim(),
             serial: linesSerial[i].value.trim(),
             defeitos: defeitosTexto
         });
@@ -457,119 +621,83 @@ async function enviarDadosFormulario(event) {
     }
 }
 
+async function enviarDadosConectores(event) {
+    event.preventDefault();
+
+    const btnEnviar = document.getElementById("btn-enviar-conectores");
+    const msgStatus = document.getElementById("msg-status-conectores");
+
+    const tecnico = document.getElementById("select-tecnico-conector").value;
+    const origen = document.getElementById("select-origem-conector").value;
+
+    let conectoresSelecionados = [];
+    document.querySelectorAll('input[name="tipo-conector"]:checked').forEach(cb => conectoresSelecionados.push(cb.value));
+    const tiposConectoresTexto = conectoresSelecionados.length > 0 ? conectoresSelecionados.join(", ") : "Nenhum";
+
+    const qtdRecuperada = parseInt(document.getElementById("input-conectores-recuperados").value) || 0;
+    const qtdSucata = parseInt(document.getElementById("input-conectores-sucata").value) || 0;
+
+    let acopladoresSelecionados = [];
+    document.querySelectorAll('input[name="tipo-acoplador"]:checked').forEach(cb => acopladoresSelecionados.push(cb.value));
+    const tiposAcopladoresTexto = acopladoresSelecionados.length > 0 ? acopladoresSelecionados.join(", ") : "Nenhum";
+
+    const qtdAcopladoresRecuperados = parseInt(document.getElementById("input-acopladores-recuperados").value) || 0;
+
+    const dadosConectores = {
+        acao: "salvarConectores",
+        tecnico: tecnico,
+        origem: origen,
+        tiposConectores: tiposConectoresTexto,
+        conectoresRecuperados: qtdRecuperada,
+        conectoresSucata: qtdSucata,
+        tiposAcopladores: tiposAcopladoresTexto,
+        acopladoresRecuperados: qtdAcopladoresRecuperados
+    };
+
+    btnEnviar.disabled = true;
+    btnEnviar.textContent = "Salvando Registro...";
+    msgStatus.style.color = "#9ca3af";
+    msgStatus.textContent = "Enviando dados para a planilha...";
+
+    try {
+        const response = await fetch(API_URL, {
+            method: "POST",
+            body: JSON.stringify(dadosConectores)
+        });
+
+        const resultado = await response.json();
+
+        if (resultado.status === "sucesso") {
+            msgStatus.style.color = "#10b981";
+            msgStatus.textContent = "Sucesso: Dados registrados!";
+            document.getElementById("form-conectores").reset();
+            await atualizarDashboard();
+        } else {
+            throw new Error(resultado.mensagem);
+        }
+
+    } catch (error) {
+        console.error("Erro no envio dos conectores:", error);
+        msgStatus.style.color = "#ef4444";
+        msgStatus.textContent = "Erro ao registrar. Tente novamente.";
+    } finally {
+        btnEnviar.disabled = false;
+        btnEnviar.textContent = "Salvar Registro de Conectores";
+    }
+}
+
+// Inicializador único e limpo
 document.addEventListener("DOMContentLoaded", () => {
+    // Insere por padrão a data de hoje no calendário ao carregar a página
+    const inputData = document.getElementById('filtro-data-dia');
+    if (inputData) {
+        const hoje = new Date();
+        const ano = hoje.getFullYear();
+        const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+        const dia = String(hoje.getDate()).padStart(2, '0');
+        inputData.value = `${ano}-${mes}-${dia}`;
+    }
+
     atualizarDashboard();
     setInterval(atualizarDashboard, 120000);
 });
-
-function mudarPeriodoGrafico(tipoFiltro) {
-    filtroGraficoAtual = tipoFiltro;
-    
-    document.getElementById('btn-filtro-hoje').classList.remove('active');
-    document.getElementById('btn-filtro-15').classList.remove('active');
-    document.getElementById('btn-filtro-30').classList.remove('active');
-    
-    if (tipoFiltro !== 'customizado') {
-        document.getElementById('filtro-data-especifica').value = '';
-    }
-    
-    if (tipoFiltro === 'hoje') document.getElementById('btn-filtro-hoje').classList.add('active');
-    if (tipoFiltro === '15dias') document.getElementById('btn-filtro-15').classList.add('active');
-    if (tipoFiltro === '30dias') document.getElementById('btn-filtro-30').classList.add('active');
-    
-    atualizarDashboard();
-}
-// FUNÇÃO CORRIGIDA: Lógica para focar na meta de entrega (Saída - Entrada)
-// FUNÇÃO ATUALIZADA: Agora soma e exibe os totais gerais de entrada e saída
-function calcularDiferencaBalanco() {
-    // Pega as entradas digitadas manualmente
-    const entOnt = parseInt(document.getElementById("input-entrada-ont").value) || 0;
-    const entOnu = parseInt(document.getElementById("input-entrada-onu").value) || 0;
-    const entRoteador = parseInt(document.getElementById("input-entrada-roteador").value) || 0;
-
-    // Pega as saídas calculadas automaticamente pelo sistema
-    const saiOnt = parseInt(document.getElementById("saida-ont-hoje").textContent) || 0;
-    const saiOnu = parseInt(document.getElementById("saida-onu-hoje").textContent) || 0;
-    const saiRoteador = parseInt(document.getElementById("saida-roteador-hoje").textContent) || 0;
-
-    // --- NOVA PARTE: CÁLCULO DOS TOTAIS GERAIS DA TABELA ---
-    const totalEntradas = entOnt + entOnu + entRoteador;
-    const totalSaidas = saiOnt + saiOnu + saiRoteador;
-
-    // Atualiza os elementos de total na tabela
-    const elTotalEntrada = document.getElementById("total-entrada-hoje");
-    if (elTotalEntrada) elTotalEntrada.textContent = totalEntradas;
-
-    const elTotalSaida = document.getElementById("total-saida-hoje");
-    if (elTotalSaida) elTotalSaida.textContent = totalSaidas;
-    // ------------------------------------------------------
-
-    // Lógica da meta (Saída - Entrada)
-    const saldoOnt = saiOnt - entOnt;
-    const saldoOnu = saiOnu - entOnu;
-    const saldoRoteador = saiRoteador - entRoteador;
-
-    // Calcula o saldo total da meta do dia
-    const saldoTotalReal = saldoOnt + saldoOnu + saldoRoteador;
-
-    // Atualiza o card de texto do saldo total
-    const elSaldoTotal = document.getElementById("saldo-total-hoje");
-    if (elSaldoTotal) {
-        elSaldoTotal.textContent = `${saldoTotalReal} un`;
-        
-        if (saldoTotalReal < 0) {
-            elSaldoTotal.style.color = "#ef4444"; 
-        } else if (saldoTotalReal === 0) {
-            elSaldoTotal.style.color = "#9ca3af"; 
-        } else {
-            elSaldoTotal.style.color = "#10b981"; 
-        }
-    }
-
-    // ==========================================
-    // RENDERIZAÇÃO DO GRÁFICO DE PIZZA DO SALDO
-    // ==========================================
-    const canvasSaldo = document.getElementById('graficoPizzaSaldo');
-    if (canvasSaldo) {
-        const ctxSaldo = canvasSaldo.getContext('2d');
-        
-        if (meuGraficoPizzaSaldo !== null) {
-            meuGraficoPizzaSaldo.destroy();
-        }
-
-        const debitoOnt = saldoOnt < 0 ? Math.abs(saldoOnt) : 0;
-        const debitoOnu = saldoOnu < 0 ? Math.abs(saldoOnu) : 0;
-        const debitoRoteador = saldoRoteador < 0 ? Math.abs(saldoRoteador) : 0;
-
-        const temPendenciaAtiva = (debitoOnt + debitoOnu + debitoRoteador) > 0;
-
-        meuGraficoPizzaSaldo = new Chart(ctxSaldo, {
-            type: 'pie',
-            data: {
-                labels: ['ONT Pendente', 'ONU Pendente', 'Roteador Pendente'],
-                datasets: [{
-                    data: temPendenciaAtiva ? [debitoOnt, debitoOnu, debitoRoteador] : [1, 1, 1],
-                    backgroundColor: temPendenciaAtiva ? ['#3b82f6', '#10b981', '#f59e0b'] : ['#374151', '#374151', '#374151'],
-                    borderWidth: 1,
-                    borderColor: 'rgba(255,255,255,0.1)'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'right',
-                        labels: {
-                            color: '#9ca3af',
-                            font: { family: 'sans-serif', size: 11 }
-                        }
-                    },
-                    tooltip: {
-                        enabled: temPendenciaAtiva
-                    }
-                }
-            }
-        });
-    }
-}

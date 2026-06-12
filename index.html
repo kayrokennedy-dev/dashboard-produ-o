@@ -17,26 +17,21 @@
                 <button id="btn-aba-dash" class="nav-btn active" onclick="alternarAba('dashboard')">Painel de Controle</button>
                 <button id="btn-aba-ranking" class="nav-btn" onclick="alternarAba('ranking')">Ranking de Técnicos</button>
                 <button id="btn-aba-form" class="nav-btn" onclick="alternarAba('formulario')">Registrar Baixa</button>
+                <button id="btn-aba-conectores" class="nav-btn" onclick="alternarAba('conectores')">Baixa de Conectores</button>
             </nav>
-        </header>
+        </header> 
 
         <div id="aba-dashboard" class="aba-conteudo active">
             
             
-            <div class="dashboard-top-grid" style="display: flex; gap: 1.5rem; margin-bottom: 2.5rem; flex-wrap: wrap; width: 100%;">
+            <div class="dashboard-linha-principal" style="display: flex; gap: 1.2rem; width: 100%; align-items: stretch; flex-wrap: wrap; box-sizing: border-box; margin-bottom: 2.5rem;">
         
-                <section class="grafico-barras-section" style="flex: 1; min-width: 300px; max-width: 450px; background: #1f2937; padding: 1.5rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); box-sizing: border-box;">
-                    <h2 class="section-title" style="margin-bottom: 1.2rem; font-size: 1.2rem; color: #fff;">📊 Produção por Técnico (Hoje)</h2>
-                    <div class="canvas-wrapper" style="position: relative; height: 280px; width: 100%;">
-                        <canvas id="graficoBarrasTecnicos"></canvas>
-                    </div>
-                </section>
 
-                <section class="balanco-section" style="flex: 2; min-width: 350px; background: #1f2937; padding: 1.5rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
-                    <h2 class="section-title" style="margin-bottom: 1.2rem; font-size: 1.2rem; color: #fff;">📥 Balanço do Dia (Entrada x Saída)</h2>
+                <section class="balanco-section" style="flex: 1.2; min-width: 340px; background: #1f2937; padding: 1.5rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
+                    <h2 class="section-title" style="margin-bottom: 1.2rem; font-size: 1.15rem; color: #fff; text-align: center;">📥 Balanço do Dia (Entrada x Saída)</h2>
                     
                     <div class="balanco-inputs-tabela" style="width: 100%; flex-grow: 1;">
-                        <table style="width: 100%; border-collapse: collapse; text-align: left; color: #9ca3af;">
+                        <table style="width: 100%; border-collapse: collapse; text-align: left; color: #9ca3af; font-size: 0.95rem;">
                             <thead>
                                 <tr style="border-bottom: 1px solid #374151;">
                                     <th style="padding: 0.5rem 0; font-size: 0.85rem; text-transform: uppercase;">Tipo</th>
@@ -45,93 +40,97 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <!-- Linha ONT -->
                                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                                    <td style="padding: 0.85rem 0; color: #fff; font-weight: bold; font-size: 1rem;">ONT</td>
+                                    <td style="padding: 0.7rem 0; color: #fff; font-weight: bold;">ONT</td>
                                     <td style="text-align: center;">
-                                        <input type="number" id="input-entrada-ont" value="0" min="0" oninput="calcularDiferencaBalanco()" style="width: 80px; background: #111827; border: 1px solid #374151; color: #fff; text-align: center; padding: 0.4rem; border-radius: 4px; font-size: 1rem;">
+                                        <input type="number" id="input-entrada-ont" value="0" min="0" oninput="calcularDiferencaBalanco()" style="width: 65px; background: #111827; border: 1px solid #374151; color: #fff; text-align: center; padding: 0.3rem; border-radius: 4px; font-size: 0.95rem;">
                                     </td>
-                                    <td style="text-align: center; color: #3b82f6; font-weight: bold; font-size: 1.2rem;" id="saida-ont-hoje">0</td>
+                                    <td style="text-align: center; color: #3b82f6; font-weight: bold; font-size: 1.1rem;" id="saida-ont-hoje">0</td>
                                 </tr>
-                                <!-- Linha ONU -->
                                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                                    <td style="padding: 0.85rem 0; color: #fff; font-weight: bold; font-size: 1rem;">ONU</td>
+                                    <td style="padding: 0.7rem 0; color: #fff; font-weight: bold;">ONU</td>
                                     <td style="text-align: center;">
-                                        <input type="number" id="input-entrada-onu" value="0" min="0" oninput="calcularDiferencaBalanco()" style="width: 80px; background: #111827; border: 1px solid #374151; color: #fff; text-align: center; padding: 0.4rem; border-radius: 4px; font-size: 1rem;">
+                                        <input type="number" id="input-entrada-onu" value="0" min="0" oninput="calcularDiferencaBalanco()" style="width: 65px; background: #111827; border: 1px solid #374151; color: #fff; text-align: center; padding: 0.3rem; border-radius: 4px; font-size: 0.95rem;">
                                     </td>
-                                    <td style="text-align: center; color: #10b981; font-weight: bold; font-size: 1.2rem;" id="saida-onu-hoje">0</td>
+                                    <td style="text-align: center; color: #10b981; font-weight: bold; font-size: 1.1rem;" id="saida-onu-hoje">0</td>
                                 </tr>
-                                <!-- Linha Roteador -->
                                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                                    <td style="padding: 0.85rem 0; color: #fff; font-weight: bold; font-size: 1rem;">Roteador</td>
+                                    <td style="padding: 0.7rem 0; color: #fff; font-weight: bold;">Roteador</td>
                                     <td style="text-align: center;">
-                                        <input type="number" id="input-entrada-roteador" value="0" min="0" oninput="calcularDiferencaBalanco()" style="width: 80px; background: #111827; border: 1px solid #374151; color: #fff; text-align: center; padding: 0.4rem; border-radius: 4px; font-size: 1rem;">
+                                        <input type="number" id="input-entrada-roteador" value="0" min="0" oninput="calcularDiferencaBalanco()" style="width: 65px; background: #111827; border: 1px solid #374151; color: #fff; text-align: center; padding: 0.3rem; border-radius: 4px; font-size: 0.95rem;">
                                     </td>
-                                    <td style="text-align: center; color: #f59e0b; font-weight: bold; font-size: 1.2rem;" id="saida-roteador-hoje">0</td>
+                                    <td style="text-align: center; color: #f59e0b; font-weight: bold; font-size: 1.1rem;" id="saida-roteador-hoje">0</td>
                                 </tr>
                             </tbody>
-                            
-                            <!-- ADICIONADO: Rodapé com a soma total dos equipamentos -->
                             <tfoot style="border-top: 2px solid #374151; background: rgba(255, 255, 255, 0.02);">
                                 <tr>
-                                    <td style="padding: 0.85rem 0; color: #9ca3af; font-weight: bold; font-size: 0.95rem; text-transform: uppercase;">Total Geral</td>
-                                    <td style="text-align: center; color: #fff; font-weight: bold; font-size: 1.1rem;" id="total-entrada-hoje">0</td>
-                                    <td style="text-align: center; color: #fff; font-weight: bold; font-size: 1.1rem;" id="total-saida-hoje">0</td>
+                                    <td style="padding: 0.7rem 0; color: #9ca3af; font-weight: bold; font-size: 0.9rem; text-transform: uppercase;">Total</td>
+                                    <td style="text-align: center; color: #fff; font-weight: bold;" id="total-entrada-hoje">0</td>
+                                    <td style="text-align: center; color: #fff; font-weight: bold;" id="total-saida-hoje">0</td>
                                 </tr>
                             </tfoot>
                         </table>
                     </div>
 
-                    <div class="saldo-grafico-wrapper" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #374151; display: flex; flex-direction: column; align-items: center;">
-                        <h3 style="font-size: 0.95rem; color: #9ca3af; text-transform: uppercase; margin-bottom: 0.75rem; text-align: center;">📊 Proporção do Saldo em Bancada</h3>
-                        
-                        <div class="canvas-pizza-saldo-wrapper" style="position: relative; height: 160px; width: 100%;">
+                    <div class="saldo-grafico-wrapper" style="margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid #374151; display: flex; flex-direction: column; align-items: center;">
+                        <div class="canvas-pizza-saldo-wrapper" style="position: relative; height: 130px; width: 100%;">
                             <canvas id="graficoPizzaSaldo"></canvas>
                         </div>
+                        <div id="saldo-geral-box" style="margin-top: 0.8rem; width: 100%; padding: 0.5rem; background: #111827; border-radius: 6px; text-align: center; font-size: 0.9rem;">
+                            Meta Restante: <strong id="saldo-total-hoje" style="color: #fff;">0 un</strong>
+                        </div>
+                    </div>
+                </section>
 
-                        <div id="saldo-geral-box" style="margin-top: 1rem; width: 100%; padding: 0.6rem; background: #111827; border-radius: 6px; text-align: center; font-size: 0.95rem;">
-                            Total Geral Restante: <strong id="saldo-total-hoje" style="color: #fff;">0 un</strong>
+                <section class="grafico-barras-section" style="flex: 1; min-width: 320px; background: #1f2937; padding: 1.5rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); box-sizing: border-box; display: flex; flex-direction: column;">
+                    <h2 class="section-title" style="margin-bottom: 1.2rem; font-size: 1.15rem; color: #fff; text-align: center;">👤 Produção por Técnico (Hoje)</h2>
+                    <div class="canvas-wrapper" style="position: relative; height: 380px; width: 100%; margin: auto 0;">
+                        <canvas id="graficoBarrasTecnicos"></canvas>
+                        
+                    </div>
+                    <div class="filtro-periodo-container" style="background: #1f2937; padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 1.5rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between;">
+                        <div style="color: #fff; font-weight: bold; font-size: 1.1rem;">
+                            📅 Filtrar Produção por Dia
+                        </div>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+                            <div style="display: flex; flex-direction: column; gap: 0.2rem;">
+                                <label style="color: #9ca3af; font-size: 0.8rem; font-weight: bold;">Selecione a Data:</label>
+                                <input type="date" id="filtro-data-dia" style="background: #111827; border: 1px solid #374151; color: #fff; padding: 0.4rem; border-radius: 4px; font-size: 0.9rem;">
+                            </div>
+                            <button onclick="aplicarFiltroCalendario()" class="btn-filtrar-calendario">Filtrar Dia</button>
+                            <button class="nav-btn" onclick="mudarPeriodoGrafico('tudo')">Mostrar Tudo</button>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="grafico-section" id="card-monitor-conectores" style="flex: 1; min-width: 320px; background: #1f2937; padding: 1.5rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
+                    <h2 class="section-title" style="font-size: 1.15rem; color: #fff; text-align: center; margin-bottom: 1rem;">🔌 Balanço de Conectores (Hoje)</h2>
+                    
+                    <div class="canvas-wrapper" style="position: relative; height: 180px; width: 100%; margin: auto 0;">
+                        <canvas id="graficoBarrasConectores"></canvas>
+                    </div>
+
+                    <div class="totalizadores-conectores" style="display: flex; flex-direction: column; gap: 0.4rem; background: #111827; padding: 0.6rem; border-radius: 6px; font-size: 0.85rem; margin-top: 1rem;">
+                        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.3rem;">
+                            <span style="color: #10b981; font-weight: bold;">CONECTOR NASDA APC:</span>
+                            <span style="color: #ffffff;"><strong id="total-apc-hoje">0</strong> un</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.3rem;">
+                            <span style="color: #10b981; font-weight: bold;">CONECTOR MAXPRINT APC:</span>
+                            <span style="color: #fdfdfd;"><strong id="total-upc-hoje">0</strong> un</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.3rem;">
+                            <span style="color: #10b981; font-weight: bold;">CONECTOR TRANSCEND APC:</span>
+                            <span style="color: #ffffff;"><strong id="total-transcend-hoje">0</strong> un</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.95rem; padding-top: 0.2rem;">
+                            <span style="color: #fff; font-weight: bold;">🏆 Total Recuperados:</span>
+                            <span style="color: #10b981; font-weight: bold;"><strong id="total-conectores-recuperados-geral">0</strong> un</span>
                         </div>
                     </div>
                 </section>
 
             </div>
-
-            <section class="grafico-section" style="margin-bottom: 2.5rem;">
-                <h2 class="section-title">Distribuição da Produção de Hoje</h2>
-                
-                <div class="grafico-container-flex">
-                    <div class="cards-equipamentos-hoje">
-                        <div class="card-mini-equip">
-                            <span>ONTs</span>
-                            <strong id="qtd-ont-hoje">0</strong>
-                        </div>
-                        <div class="card-mini-equip">
-                            <span>ONUs</span>
-                            <strong id="qtd-onu-hoje">0</strong>
-                        </div>
-                        <div class="card-mini-equip">
-                            <span>Roteadores</span>
-                            <strong id="qtd-roteador-hoje">0</strong>
-                        </div>
-                    </div>
-
-                    <div class="grafico-filtros" style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap;">
-                        <button id="btn-filtro-hoje" class="nav-btn active" onclick="mudarPeriodoGrafico('hoje')">Hoje</button>
-                        <button id="btn-filtro-15" class="nav-btn" onclick="mudarPeriodoGrafico('15dias')">Últimos 15 dias</button>
-                        <button id="btn-filtro-30" class="nav-btn" onclick="mudarPeriodoGrafico('30dias')">Últimos 30 dias</button>
-                        
-                        <div style="display: flex; gap: 0.5rem; align-items: center; background: #1f2937; padding: 0.4rem 0.8rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);">
-                            <label for="filtro-data-especifica" style="color: #9ca3af; font-size: 0.9rem;">Data específica:</label>
-                            <input type="date" id="filtro-data-especifica" onchange="mudarPeriodoGrafico('customizado')" style="background: #111827; color: #fff; border: 1px solid #374151; padding: 0.2rem; border-radius: 4px; cursor: pointer;">
-                        </div>
-                    </div>
-                    
-                    <div class="canvas-wrapper">
-                        <canvas id="graficoPizzaEquipamentos"></canvas>
-                    </div>
-                </div>
-            </section>
         </div>
         <div id="aba-ranking" class="aba-conteudo">
             <h2 class="section-title">Métricas Gerais da Bancada</h2>
@@ -618,6 +617,95 @@
                         <button type="submit" id="btn-enviar" class="submit-btn">Salvar Registro</button>
                         <span id="msg-status" class="status-message"></span>
                     </div>
+
+
+
+                </form>
+            </section>
+        </div>
+
+        <div id="aba-conectores" class="aba-conteudo" style="display: none; box-sizing: border-box;">
+            <section class="formulario-section" style="background: #1f2937; padding: 2rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); max-width: 600px; margin: 0 auto; box-sizing: border-box;">
+                <h2 class="section-title" style="margin-bottom: 1.5rem; font-size: 1.3rem; color: #fff; text-align: center;">🔌 Registro de Conectores e Acopladores</h2>
+                
+                <form id="form-conectores" onsubmit="enviarDadosConectores(event)" style="display: flex; flex-direction: column; gap: 1.2rem;">
+                    
+                    <div class="form-group" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <label style="color: #9ca3af; font-size: 0.9rem; font-weight: bold;">👤 Técnico Responsável:</label>
+                        <select id="select-tecnico-conector" required style="background: #111827; border: 1px solid #374151; color: #fff; padding: 0.5rem; border-radius: 4px; font-size: 1rem; width: 100%;">
+                            <option value="" disabled selected>Selecione o técnico...</option>
+                            <option value="Roberto">Roberto</option>
+                            </select>
+                    </div>
+
+                    
+
+                    <hr style="border: 0; border-top: 1px solid #374151; margin: 0.5rem 0;">
+
+                    <div class="form-group" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <label style="color: #9ca3af; font-size: 0.9rem; font-weight: bold;">🔌 Tipos de Conectores:</label>
+                        <div style="display: flex; flex-direction: column; gap: 1rem; flex-wrap: wrap; background: #111827; padding: 0.6rem; border-radius: 4px; border: 1px solid #374151;">
+                            <label style="color: #fff; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; gap: 0.4rem;">
+                                <input type="checkbox" name="tipo-conector" value="CONECTOR NASDA APC" style="cursor: pointer;"> CONECTOR NASDA APC
+                            </label>
+                            <label style="color: #fff; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; gap: 0.4rem;">
+                                <input type="checkbox" name="tipo-conector" value="CONECTOR MAXPRINT APC" style="cursor: pointer;"> CONECTOR MAXPRINT APC
+                            </label>
+                            <label style="color: #fff; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; gap: 0.4rem;">
+                                <input type="checkbox" name="tipo-conector" value="CONECTOR TRANSCEND APC" style="cursor: pointer;"> CONECTOR TRANSCEND APC
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <label style="color: #9ca3af; font-size: 0.9rem; font-weight: bold;">📍 Origem:</label>
+                        <select id="select-origem-conector" required style="background: #111827; border: 1px solid #374151; color: #fff; padding: 0.5rem; border-radius: 4px; font-size: 1rem; width: 100%;">
+                            <option value="" disabled selected>Selecione a origem...</option>
+                            <option value="SUPORTE/ATIVAÇAO">SUPORTE/ATIVAÇAO</option>
+                            <option value="MAPEAMENTO">MAPEAMENTO</option>
+                            <option value="NAO IDENTIFICADO">NAO IDENTIFICADO</option>
+                            <option value="RECOLHIMENTO">RECOLHIMENTO</option>  
+                        </select>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; width: 100%;">
+                        <div class="form-group" style="flex: 1; display: flex; flex-direction: column; gap: 0.5rem;">
+                            <label for="input-conectores-recuperados" style="color: #10b981; font-size: 0.9rem; font-weight: bold;">✅ Qtd. Recuperada:</label>
+                            <input type="number" id="input-conectores-recuperados" value="0" min="0" required style="background: #111827; border: 1px solid #374151; color: #fff; padding: 0.5rem; border-radius: 4px; font-size: 1rem; text-align: center; width: 100%; box-sizing: border-box;">
+                        </div>
+                        <div class="form-group" style="flex: 1; display: flex; flex-direction: column; gap: 0.5rem;">
+                            <label for="input-conectores-sucata" style="color: #ef4444; font-size: 0.9rem; font-weight: bold;">🗑️ Qtd. Sucata:</label>
+                            <input type="number" id="input-conectores-sucata" value="0" min="0" required style="background: #111827; border: 1px solid #374151; color: #fff; padding: 0.5rem; border-radius: 4px; font-size: 1rem; text-align: center; width: 100%; box-sizing: border-box;">
+                        </div>
+                    </div>
+
+                    <hr style="border: 0; border-top: 1px solid #374151; margin: 0.5rem 0;">
+
+                    <div class="form-group" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <label style="color: #9ca3af; font-size: 0.9rem; font-weight: bold;">Acoplador</label>
+                        <div style="display: flex; flex-direction: column; gap: 1rem; flex-wrap: wrap; background: #111827; padding: 0.6rem; border-radius: 4px; border: 1px solid #374151;">
+                            <label style="color: #fff; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; gap: 0.4rem;">
+                                <input type="checkbox" name="tipo-acoplador" value="ACOPLADOR APC" style="cursor: pointer;"> ACOPLADOR APC
+                            </label>
+                            <label style="color: #fff; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; gap: 0.4rem;">
+                                <input type="checkbox" name="tipo-acoplador" value="ACOPLADOR UPC" style="cursor: pointer;"> ACOPLADOR UPC
+                            </label>
+                            <label style="color: #fff; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; gap: 0.4rem;">
+                                <input type="checkbox" name="tipo-acoplador" value="SEM ACOPLADOR" style="cursor: pointer;"> SEM ACOPLADOR
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="display: flex; flex-direction: column; gap: 0.5rem; width: 100%;">
+                        <label for="input-acopladores-recuperados" style="color: #3b82f6; font-size: 0.9rem; font-weight: bold;">🔄 Qtd. Acopladores Recuperados:</label>
+                        <input type="number" id="input-acopladores-recuperados" value="0" min="0" required style="background: #111827; border: 1px solid #374151; color: #fff; padding: 0.5rem; border-radius: 4px; font-size: 1rem; text-align: center; width: 100%; box-sizing: border-box;">
+                    </div>
+
+                    <div id="msg-status-conectores" class="status-message" style="color: #9ca3af; text-align: center; font-size: 0.9rem; min-height: 20px;"></div>
+
+                    <button type="submit" id="btn-enviar-conectores" style="background: #3b82f6; color: #fff; border: none; padding: 0.75rem; border-radius: 4px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background 0.2s; width: 100%;">
+                        Salvar Registro de Conectores
+                    </button>
 
                 </form>
             </section>
