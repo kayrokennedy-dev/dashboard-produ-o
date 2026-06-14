@@ -462,9 +462,37 @@ function renderizarGraficoConectores(dados) {
 }
 
 function calcularDiferencaBalanco() {
-    const entOnt = parseInt(document.getElementById("input-entrada-ont")?.value) || 0;
-    const entOnu = parseInt(document.getElementById("input-entrada-onu")?.value) || 0;
-    const entRoteador = parseInt(document.getElementById("input-entrada-roteador")?.value) || 0;
+    const inputOnt = document.getElementById("input-entrada-ont");
+    const inputOnu = document.getElementById("input-entrada-onu");
+    const inputRoteador = document.getElementById("input-entrada-roteador");
+
+    // --- NOVA LÓGICA: SALVAR E CHECAR DATA NO LOCALSTORAGE ---
+    const hojeString = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    const dataUltimoSalvamento = localStorage.getItem("balanco_data_dia");
+
+    // Se mudou o dia, zera os valores salvos anteriormente
+    if (dataUltimoSalvamento && dataUltimoSalvamento !== hojeString) {
+        localStorage.setItem("entrada_ont", "0");
+        localStorage.setItem("entrada_onu", "0");
+        localStorage.setItem("entrada_roteador", "0");
+        
+        if (inputOnt) inputOnt.value = 0;
+        if (inputOnu) inputOnu.value = 0;
+        if (inputRoteador) inputRoteador.value = 0;
+    }
+    
+    // Salva a data atual como o último dia modificado
+    localStorage.setItem("balanco_data_dia", hojeString);
+
+    // Salva o que o usuário digitou atualmente para não perder no refresh
+    if (inputOnt) localStorage.setItem("entrada_ont", inputOnt.value);
+    if (inputOnu) localStorage.setItem("entrada_onu", inputOnu.value);
+    if (inputRoteador) localStorage.setItem("entrada_roteador", inputRoteador.value);
+    // --------------------------------------------------------
+
+    const entOnt = parseInt(inputOnt?.value) || 0;
+    const entOnu = parseInt(inputOnu?.value) || 0;
+    const entRoteador = parseInt(inputRoteador?.value) || 0;
 
     const saiOnt = parseInt(document.getElementById("saida-ont-hoje")?.textContent) || 0;
     const saiOnu = parseInt(document.getElementById("saida-onu-hoje")?.textContent) || 0;
@@ -721,6 +749,23 @@ document.addEventListener("DOMContentLoaded", () => {
         inputData.value = `${ano}-${mes}-${dia}`;
     }
 
+    // --- NOVA LÓGICA: CARREGAR VALORES DO DIA SALVOS ---
+    const hojeString = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    const dataUltimoSalvamento = localStorage.getItem("balanco_data_dia");
+
+    // Só restaura se a data gravada for igual ao dia de hoje
+    if (dataUltimoSalvamento === hojeString) {
+        if (document.getElementById("input-entrada-ont")) {
+            document.getElementById("input-entrada-ont").value = localStorage.getItem("entrada_ont") || 0;
+        }
+        if (document.getElementById("input-entrada-onu")) {
+            document.getElementById("input-entrada-onu").value = localStorage.getItem("entrada_onu") || 0;
+        }
+        if (document.getElementById("input-entrada-roteador")) {
+            document.getElementById("input-entrada-roteador").value = localStorage.getItem("entrada_roteador") || 0;
+        }
+    }
+
     atualizarDashboard();
-    setInterval(atualizarDashboard, 120000);
+    setInterval(atualizarDashboard, 120000); // Atualiza os dados a cada 2 minutos
 });
