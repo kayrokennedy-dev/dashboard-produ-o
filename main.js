@@ -371,7 +371,15 @@ function processarDadosConectoresDoDashboard(respostaObjeto) {
         maxprintRec: parseInt(respostaObjeto.maxprintRec) || 0,
         maxprintSuc: parseInt(respostaObjeto.maxprintSuc) || 0,
         transcendRec: parseInt(respostaObjeto.transcendRec) || 0,
-        transcendSuc: parseInt(respostaObjeto.transcendSuc) || 0
+        transcendSuc: parseInt(respostaObjeto.transcendSuc) || 0,
+        
+        // CAPTURA DOS NOVOS VALORES UPC:
+        nasdaUpcRec: parseInt(respostaObjeto.nasdaUpcRec) || 0,
+        nasdaUpcSuc: parseInt(respostaObjeto.nasdaUpcSuc) || 0,
+        maxprintUpcRec: parseInt(respostaObjeto.maxprintUpcRec) || 0,
+        maxprintUpcSuc: parseInt(respostaObjeto.maxprintUpcSuc) || 0,
+        transcendUpcRec: parseInt(respostaObjeto.transcendUpcRec) || 0,
+        transcendUpcSuc: parseInt(respostaObjeto.transcendUpcSuc) || 0
     };
 
     renderizarGraficoConectores(conectoresDados);
@@ -381,6 +389,7 @@ function renderizarGraficoConectores(dados) {
     const ctx = document.getElementById('graficoBarrasConectores');
     if (!ctx) return;
 
+    // Constantes APC
     const nasdaRec = dados.nasdaRec || 0;
     const nasdaSuc = dados.nasdaSuc || 0;
     const maxprintRec = dados.maxprintRec || 0;
@@ -388,12 +397,22 @@ function renderizarGraficoConectores(dados) {
     const transcendRec = dados.transcendRec || 0;
     const transcendSuc = dados.transcendSuc || 0;
 
-    // SOMATORIA CORRETA PARA EXIBIÇÃO NAS CAIXINHAS ABAIXO DO GRÁFICO
-    if(document.getElementById('total-apc-hoje')) document.getElementById('total-apc-hoje').textContent = nasdaRec + nasdaSuc;
-    if(document.getElementById('total-upc-hoje')) document.getElementById('total-upc-hoje').textContent = maxprintRec + maxprintSuc;
-    if(document.getElementById('total-transcend-hoje')) document.getElementById('total-transcend-hoje').textContent = transcendRec + transcendSuc;
+    // Novas Constantes UPC
+    const nasdaUpcRec = dados.nasdaUpcRec || 0;
+    const nasdaUpcSuc = dados.nasdaUpcSuc || 0;
+    const maxprintUpcRec = dados.maxprintUpcRec || 0;
+    const maxprintUpcSuc = dados.maxprintUpcSuc || 0;
+    const transcendUpcRec = dados.transcendUpcRec || 0;
+    const transcendUpcSuc = dados.transcendUpcSuc || 0;
+
+    // ATUALIZAÇÃO DOS CONTADORES FIXOS DE TEXTO
+    // Se quiser manter os contadores antigos somando APC + UPC por marca nas caixinhas:
+    if(document.getElementById('total-apc-hoje')) document.getElementById('total-apc-hoje').textContent = (nasdaRec + nasdaSuc) + (nasdaUpcRec + nasdaUpcSuc);
+    if(document.getElementById('total-upc-hoje')) document.getElementById('total-upc-hoje').textContent = (maxprintRec + maxprintSuc) + (maxprintUpcRec + maxprintUpcSuc);
+    if(document.getElementById('total-transcend-hoje')) document.getElementById('total-transcend-hoje').textContent = (transcendRec + transcendSuc) + (transcendUpcRec + transcendUpcSuc);
     
-    const totalGeralRecuperados = nasdaRec + maxprintRec + transcendRec;
+    // Total Geral de todos os conectores recuperados juntos (APC + UPC)
+    const totalGeralRecuperados = nasdaRec + maxprintRec + transcendRec + nasdaUpcRec + maxprintUpcRec + transcendUpcRec;
     if(document.getElementById('total-conectores-recuperados-geral')) {
         document.getElementById('total-conectores-recuperados-geral').textContent = totalGeralRecuperados;
     }
@@ -403,11 +422,15 @@ function renderizarGraficoConectores(dados) {
     meuGraficoConectores = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: ['CONECTOR NASDA APC', 'CONECTOR MAXPRINT APC', 'CONECTOR TRANSCEND APC'],
+            // Adicionado os 3 novos rótulos UPC ao gráfico
+            labels: [
+                'NASDA APC', 'NASDA UPC', 'TRANSCEND APC',
+                'TRANSCEND UPC ', 'MAXPRINT APC ', 'MAXPRINT UPC '
+            ],
             datasets: [
                 {
                     label: 'Recuperados',
-                    data: [nasdaRec, maxprintRec, transcendRec],
+                    data: [nasdaRec, maxprintRec, transcendRec, nasdaUpcRec, maxprintUpcRec, transcendUpcRec],
                     backgroundColor: '#10b981', 
                     borderColor: '#10b981',
                     borderWidth: 1,
@@ -416,7 +439,7 @@ function renderizarGraficoConectores(dados) {
                 },
                 {
                     label: 'Sucata',
-                    data: [nasdaSuc, maxprintSuc, transcendSuc],
+                    data: [nasdaSuc, maxprintSuc, transcendSuc, nasdaUpcSuc, maxprintUpcSuc, transcendUpcSuc],
                     backgroundColor: '#ef4444', 
                     borderColor: '#ef4444',
                     borderWidth: 1,
@@ -431,7 +454,7 @@ function renderizarGraficoConectores(dados) {
             maintainAspectRatio: false,
             scales: {
                 x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#9ca3af', stepSize: 1 } },
-                y: { grid: { display: false }, ticks: { color: '#ffffff', font: { weight: 'bold', size: 10 } } }
+                y: { grid: { display: false }, ticks: { color: '#ffffff', font: { weight: 'bold', size: 9 } } }
             },
             plugins: { legend: { labels: { color: '#9ca3af' } } }
         }
