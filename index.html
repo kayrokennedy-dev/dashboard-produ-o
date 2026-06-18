@@ -711,9 +711,26 @@
             </section>
         </div>
     </main>
+
+
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script src="main.js"></script>
+
+    <div id="tela-login-laboratorio" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0f172a; z-index: 99999; flex-direction: column; justify-content: center; align-items: center; font-family: sans-serif;">
+        <div style="background: #1e293b; padding: 2.5rem; border-radius: 8px; border: 1px solid #334155; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); text-align: center; width: 100%; max-width: 320px; box-sizing: border-box;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🔒</div>
+            <h2 style="color: #fff; margin-bottom: 0.5rem; font-size: 1.4rem;">Painel Restrito</h2>
+            <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 1.5rem; line-height: 1.4;">Digite o código PIN do Laboratório para liberar o acesso.</p>
+            
+            <input type="password" id="input-pin-lab" maxlength="4" placeholder="••••" pattern="[0-9]*" inputmode="numeric" style="width: 100%; padding: 0.75rem; background: #0f172a; border: 1px solid #475569; border-radius: 6px; color: #fff; font-size: 1.5rem; text-align: center; letter-spacing: 0.5rem; margin-bottom: 1rem; box-sizing: border-box; outline: none;">
+            
+            <button onclick="validarPinLaboratorio()" style="width: 100%; padding: 0.75rem; background: #3b82f6; color: #fff; border: none; border-radius: 6px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background 0.2s;">
+                Entrar no Painel
+            </button>
+            <p id="erro-pin-lab" style="color: #ef4444; font-size: 0.85rem; margin-top: 1rem; min-height: 18px; font-weight: bold;"></p>
+        </div>
+    </div>
 </body>
 </html>

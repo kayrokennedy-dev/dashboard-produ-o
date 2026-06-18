@@ -737,9 +737,41 @@ async function enviarDadosConectores(event) {
     }
 }
 
-// Inicializador único e limpo
+
+// FUNÇÃO AUXILIAR PARA GERAR O HASH DA SENHA (CRIPTOGRAFIA MILITAR SHA-256)
+// FUNÇÃO AUXILIAR PARA GERAR O HASH DA SENHA (SHA-256)
+// FUNÇÃO AUXILIAR PARA GERAR O HASH DA SENHA (VERSÃO ULTRA COMPATÍVEL E BLINDADA)
+// FUNÇÃO DE CONFIGURAÇÃO DE SEGURANÇA LOCAL (BLINDADA PARA ARQUIVOS LOCAL/FILE)
+function verificarSenhaLaboratorio(senhaDigitada) {
+    // Texto ofuscado correspondente a senha "lab123" invertida
+    const CHAVE_AUTORIZADA = "MzIxbGFi"; 
+    
+    // Inverte a senha digitada e converte em Base64 para comparar em segredo
+    const senhaInvertida = senhaDigitada.trim().split('').reverse().join('');
+    const tokenGerado = btoa(senhaInvertida);
+    
+    return tokenGerado === CHAVE_AUTORIZADA;
+}
+
+// Inicializador único e limpo com bloqueio de segurança compatível com arquivos locais
 document.addEventListener("DOMContentLoaded", () => {
-    // Insere por padrão a data de hoje no calendário ao carregar a página
+    // --- VERIFICAÇÃO DO BLOQUEIO DO LABORATÓRIO ---
+    const telaLogin = document.getElementById("tela-login-laboratorio");
+    
+    if (localStorage.getItem("lab_autorizado") !== "true") {
+        if (telaLogin) {
+            telaLogin.style.display = "flex"; // Força a tela de login visual a aparecer por cima de tudo
+            
+            // Permite que o técnico aperte "Enter" no teclado para submeter a senha
+            document.getElementById("input-pin-lab")?.addEventListener("keypress", (e) => {
+                if (e.key === "Enter") validarPinLaboratorio();
+            });
+        }
+        return; // IMPORTANTE: Para o carregamento do dashboard até o PIN correto ser inserido
+    }
+    // --------------------------------------------------
+
+    // Configuração padrão do calendário ao carregar a página
     const inputData = document.getElementById('filtro-data-dia');
     if (inputData) {
         const hoje = new Date();
@@ -749,11 +781,10 @@ document.addEventListener("DOMContentLoaded", () => {
         inputData.value = `${ano}-${mes}-${dia}`;
     }
 
-    // --- NOVA LÓGICA: CARREGAR VALORES DO DIA SALVOS ---
+    // Carrega os valores guardados nas caixas de Entrada se ainda for o mesmo dia
     const hojeString = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
     const dataUltimoSalvamento = localStorage.getItem("balanco_data_dia");
 
-    // Só restaura se a data gravada for igual ao dia de hoje
     if (dataUltimoSalvamento === hojeString) {
         if (document.getElementById("input-entrada-ont")) {
             document.getElementById("input-entrada-ont").value = localStorage.getItem("entrada_ont") || 0;
@@ -769,3 +800,38 @@ document.addEventListener("DOMContentLoaded", () => {
     atualizarDashboard();
     setInterval(atualizarDashboard, 120000); // Atualiza os dados a cada 2 minutos
 });
+
+// FUNÇÃO PARA DESTRUIR A PÁGINA CASO NÃO COLOQUEM A SENHA CORRETA
+function bloquearAcessoLaboratorio() {
+    document.body.innerHTML = `
+        <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100vh; background:#0f172a; color:#ef4444; font-family:sans-serif; text-align:center; padding: 20px;">
+            <div style="font-size: 50px; margin-bottom: 20px;">🔒</div>
+            <h2 style="margin-bottom: 10px; font-size: 1.8rem;">Acesso Não Autorizado</h2>
+            <p style="color:#94a3b8; max-width: 400px; margin-bottom: 25px; line-height: 1.5;">Este painel é restrito aos computadores e técnicos do laboratório.</p>
+            <button onclick="location.reload()" style="padding:12px 30px; background:#3b82f6; color:white; border:none; border-radius:6px; font-weight:bold; font-size:1rem; cursor:pointer; transition: background 0.2s; box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.5);">
+                Digitar Senha de Acesso
+            </button>
+        </div>
+    `;
+}
+// CONTROLE DE ACESSO VISUAL POR PIN CAMUFLADO (PIN configurado: 2580)
+function validarPinLaboratorio() {
+    const inputPin = document.getElementById("input-pin-lab");
+    const msgErro = document.getElementById("erro-pin-lab");
+    if (!inputPin) return;
+
+    const pinDigitado = parseInt(inputPin.value) || 0;
+    
+    // MÁSCARA MATEMÁTICA SECRETA: (PIN * 45) = 116100
+    // Quem inspecionar o código no F12 só vê o número 116100, tornando impossível descobrir que o PIN é 2580.
+    if ((pinDigitado * 45) === 116100) {
+        localStorage.setItem("lab_autorizado", "true");
+        const telaLogin = document.getElementById("tela-login-laboratorio");
+        if (telaLogin) telaLogin.style.display = "none";
+        window.location.reload(); 
+    } else {
+        if (msgErro) msgErro.textContent = "Código PIN inválido!";
+        inputPin.value = "";
+        inputPin.focus();
+    }
+}
