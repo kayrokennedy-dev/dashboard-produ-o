@@ -814,7 +814,6 @@ function bloquearAcessoLaboratorio() {
         </div>
     `;
 }
-// CONTROLE DE ACESSO VISUAL POR PIN CAMUFLADO (PIN configurado: 2580)
 function validarPinLaboratorio() {
     const inputPin = document.getElementById("input-pin-lab");
     const msgErro = document.getElementById("erro-pin-lab");
@@ -822,8 +821,6 @@ function validarPinLaboratorio() {
 
     const pinDigitado = parseInt(inputPin.value) || 0;
     
-    // MÁSCARA MATEMÁTICA SECRETA: (PIN * 45) = 116100
-    // Quem inspecionar o código no F12 só vê o número 116100, tornando impossível descobrir que o PIN é 2580.
     if ((pinDigitado * 45) === 116100) {
         localStorage.setItem("lab_autorizado", "true");
         const telaLogin = document.getElementById("tela-login-laboratorio");
